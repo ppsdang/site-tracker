@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Tracker - Website Audit Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Site Tracker</h1>
+            <p class="subtitle">Website Audit & Health Checker</p>
+        </header>
+
+        <main>
+            <!-- Audit Form -->
+            <section class="card">
+                <h2>Start New Audit</h2>
+                <form id="auditForm">
+                    <div class="form-group">
+                        <label for="urlInput">Website URL</label>
+                        <input
+                            type="url"
+                            id="urlInput"
+                            placeholder="https://example.com"
+                            required
+                        >
+                    </div>
+                    <button type="submit" id="auditButton" class="btn btn-primary">
+                        Run Audit
+                    </button>
+                </form>
+                <div id="auditProgress" class="progress" style="display: none;">
+                    <div class="progress-text">Analyzing website...</div>
+                </div>
+            </section>
+
+            <!-- Audit Results -->
+            <section id="resultsSection" class="card" style="display: none;">
+                <h2>Audit Results</h2>
+
+                <div class="health-score-container">
+                    <div class="health-score">
+                        <div class="score-circle" id="healthScoreCircle">
+                            <span id="healthScoreValue">0</span>
+                        </div>
+                        <div class="score-label">Overall Health Score</div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-icon">🔍</span>
+                            <span class="metric-name">SEO</span>
+                        </div>
+                        <div class="metric-score" id="seoScore">0</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" id="seoBar"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-icon">⚡</span>
+                            <span class="metric-name">Performance</span>
+                        </div>
+                        <div class="metric-score" id="performanceScore">0</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" id="performanceBar"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-icon">♿</span>
+                            <span class="metric-name">Accessibility</span>
+                        </div>
+                        <div class="metric-score" id="accessibilityScore">0</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" id="accessibilityBar"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-icon">🔒</span>
+                            <span class="metric-name">Security</span>
+                        </div>
+                        <div class="metric-score" id="securityScore">0</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" id="securityBar"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-icon">✅</span>
+                            <span class="metric-name">Best Practices</span>
+                        </div>
+                        <div class="metric-score" id="bestPracticesScore">0</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" id="bestPracticesBar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Issues -->
+                <div class="issues-section">
+                    <h3>Issues Found (<span id="issueCount">0</span>)</h3>
+                    <div class="issues-filter">
+                        <button class="filter-btn active" data-severity="all">All</button>
+                        <button class="filter-btn" data-severity="critical">Critical</button>
+                        <button class="filter-btn" data-severity="high">High</button>
+                        <button class="filter-btn" data-severity="medium">Medium</button>
+                        <button class="filter-btn" data-severity="low">Low</button>
+                    </div>
+                    <div id="issuesList"></div>
+                </div>
+
+                <!-- Comparison -->
+                <div class="comparison-section" id="comparisonSection" style="display: none;">
+                    <h3>Comparison with Previous Audit</h3>
+                    <div id="comparisonContent"></div>
+                </div>
+            </section>
+
+            <!-- Recent Websites -->
+            <section class="card">
+                <h2>Recently Audited Websites</h2>
+                <div id="websitesList" class="websites-list"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
