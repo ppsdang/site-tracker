@@ -311,7 +311,7 @@ export class SiteCrawler {
       contentHashMap.get(pageData.contentHash)!.push(url);
     }
 
-    for (const [hash, urls] of contentHashMap) {
+    for (const [_hash, urls] of contentHashMap) {
       if (urls.length > 1) {
         // Check if any of these pages have canonical tags pointing to each other
         const hasCanonical = urls.some(url => {

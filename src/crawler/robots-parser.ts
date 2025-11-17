@@ -40,7 +40,7 @@ export class RobotsParser {
           }
           currentUserAgent = userAgentMatch[1].trim();
           currentRule = {
-            userAgent: currentUserAgent,
+            userAgent: currentUserAgent || '*',
             disallow: [],
             allow: [],
           };

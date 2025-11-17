@@ -1,6 +1,5 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { URL } from 'url';
 
 export interface SitemapUrl {
   loc: string;

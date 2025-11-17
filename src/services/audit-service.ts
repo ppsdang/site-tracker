@@ -1,4 +1,3 @@
-import { WebCrawler } from '../crawler/crawler';
 import { SiteCrawler } from '../crawler/site-crawler';
 import { SEOAnalyzer } from '../analyzer/seo-analyzer';
 import { PerformanceAnalyzer } from '../analyzer/performance-analyzer';
@@ -11,7 +10,6 @@ import { URL } from 'url';
 import * as cheerio from 'cheerio';
 
 export class AuditService {
-  private crawler: WebCrawler;
   private siteCrawler: SiteCrawler;
   private seoAnalyzer: SEOAnalyzer;
   private performanceAnalyzer: PerformanceAnalyzer;
@@ -19,12 +17,9 @@ export class AuditService {
   private securityAnalyzer: SecurityAnalyzer;
   private bestPracticesAnalyzer: BestPracticesAnalyzer;
   private db: DatabaseManager;
-  private crawlOptions: CrawlOptions;
 
   constructor(db: DatabaseManager, crawlOptions: CrawlOptions) {
     this.db = db;
-    this.crawlOptions = crawlOptions;
-    this.crawler = new WebCrawler(crawlOptions);
     this.siteCrawler = new SiteCrawler(crawlOptions);
     this.seoAnalyzer = new SEOAnalyzer();
     this.performanceAnalyzer = new PerformanceAnalyzer();
