@@ -9,16 +9,16 @@ export function createWebsiteRoutes(
   const router = Router();
 
   // Get all websites
-  router.get('/websites', (req: Request, res: Response) => {
+  router.get('/websites', (_req: Request, res: Response) => {
     try {
       const websites = auditService.getAllWebsites();
-      res.json({
+      return res.json({
         success: true,
         data: websites,
       });
     } catch (error: any) {
       console.error('Error fetching websites:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch websites',
       });
@@ -40,13 +40,13 @@ export function createWebsiteRoutes(
         return res.status(404).json({ error: 'Website not found' });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: website,
       });
     } catch (error: any) {
       console.error('Error fetching website:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch website',
       });
@@ -65,13 +65,13 @@ export function createWebsiteRoutes(
 
       const audits = auditService.getAuditsForWebsite(id, limit);
 
-      res.json({
+      return res.json({
         success: true,
         data: audits,
       });
     } catch (error: any) {
       console.error('Error fetching audits:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch audits',
       });
@@ -93,13 +93,13 @@ export function createWebsiteRoutes(
         return res.status(404).json({ error: 'No audit found for this website' });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: audit,
       });
     } catch (error: any) {
       console.error('Error fetching latest audit:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch latest audit',
       });
@@ -118,13 +118,13 @@ export function createWebsiteRoutes(
 
       const trend = comparisonService.getAuditTrend(id, limit);
 
-      res.json({
+      return res.json({
         success: true,
         data: trend,
       });
     } catch (error: any) {
       console.error('Error fetching trend:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch trend',
       });

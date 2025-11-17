@@ -25,13 +25,13 @@ export function createAuditRoutes(
       }
 
       const audit = await auditService.auditWebsite(url);
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: audit,
       });
     } catch (error: any) {
       console.error('Error creating audit:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to create audit',
       });
@@ -53,13 +53,13 @@ export function createAuditRoutes(
         return res.status(404).json({ error: 'Audit not found' });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: audit,
       });
     } catch (error: any) {
       console.error('Error fetching audit:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch audit',
       });
@@ -81,13 +81,13 @@ export function createAuditRoutes(
         return res.status(404).json({ error: 'Audit not found' });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: comparison,
       });
     } catch (error: any) {
       console.error('Error fetching comparison:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch comparison',
       });
@@ -109,13 +109,13 @@ export function createAuditRoutes(
         return res.status(404).json({ error: 'Audit not found' });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: comparison,
       });
     } catch (error: any) {
       console.error('Error comparing with similar websites:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: error.message || 'Failed to compare with similar websites',
       });

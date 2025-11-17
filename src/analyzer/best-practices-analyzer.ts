@@ -100,7 +100,7 @@ export class BestPracticesAnalyzer {
     }
 
     // Check for broken images
-    $('img:not([src]), img[src=""]').each((_, element) => {
+    $('img:not([src]), img[src=""]').each(() => {
       issues.push({
         severity: 'medium',
         category: 'Best Practices',

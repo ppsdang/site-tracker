@@ -18,12 +18,10 @@ export interface CrawledPage {
 
 export class WebCrawler {
   private options: CrawlOptions;
-  private visitedUrls: Set<string>;
   private baseUrl: URL;
 
   constructor(options: CrawlOptions) {
     this.options = options;
-    this.visitedUrls = new Set();
     this.baseUrl = new URL('http://example.com'); // Will be set when crawling starts
   }
 

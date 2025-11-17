@@ -41,7 +41,6 @@ export class AccessibilityAnalyzer {
     }
 
     // Form labels
-    const forms = $('form');
     let formLabels = true;
     const inputs = $('input[type="text"], input[type="email"], input[type="password"], textarea');
 
