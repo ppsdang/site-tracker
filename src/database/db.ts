@@ -288,6 +288,59 @@ export class DatabaseManager {
     return stmt.all(auditId) as Issue[];
   }
 
+  // Page operations
+  createPage(auditId: number, pageData: any): number {
+    const stmt = this.db.prepare(`
+      INSERT INTO pages (
+        audit_id, url, status_code, title, meta_description, word_count,
+        crawled_at, canonical_url, content_hash, noindex, nofollow,
+        in_sitemap, incoming_links_count, outgoing_links_count, load_time, page_size
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      auditId,
+      pageData.url,
+      pageData.statusCode || null,
+      pageData.title || null,
+      pageData.metaDescription || null,
+      pageData.wordCount || 0,
+      pageData.crawledAt || new Date().toISOString(),
+      pageData.canonicalUrl || null,
+      pageData.contentHash || null,
+      pageData.noindex ? 1 : 0,
+      pageData.nofollow ? 1 : 0,
+      pageData.inSitemap ? 1 : 0,
+      pageData.incomingLinksCount || 0,
+      pageData.outgoingLinksCount || 0,
+      pageData.loadTime || null,
+      pageData.pageSize || null
+    );
+
+    return result.lastInsertRowid as number;
+  }
+
+  getPagesForAudit(auditId: number): any[] {
+    const stmt = this.db.prepare('SELECT * FROM pages WHERE audit_id = ? ORDER BY url');
+    return stmt.all(auditId);
+  }
+
+  // Link operations
+  createLink(auditId: number, fromUrl: string, toUrl: string, anchorText?: string): number {
+    const stmt = this.db.prepare(`
+      INSERT INTO links (audit_id, from_url, to_url, anchor_text)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(auditId, fromUrl, toUrl, anchorText || null);
+    return result.lastInsertRowid as number;
+  }
+
+  getLinksForAudit(auditId: number): any[] {
+    const stmt = this.db.prepare('SELECT * FROM links WHERE audit_id = ?');
+    return stmt.all(auditId);
+  }
+
   close(): void {
     this.db.close();
   }

@@ -1,4 +1,5 @@
 import { WebCrawler } from '../crawler/crawler';
+import { SiteCrawler } from '../crawler/site-crawler';
 import { SEOAnalyzer } from '../analyzer/seo-analyzer';
 import { PerformanceAnalyzer } from '../analyzer/performance-analyzer';
 import { AccessibilityAnalyzer } from '../analyzer/accessibility-analyzer';
@@ -7,19 +8,24 @@ import { BestPracticesAnalyzer } from '../analyzer/best-practices-analyzer';
 import { DatabaseManager } from '../database/db';
 import { Audit, CrawlOptions, Issue, AuditMetrics } from '../types';
 import { URL } from 'url';
+import * as cheerio from 'cheerio';
 
 export class AuditService {
   private crawler: WebCrawler;
+  private siteCrawler: SiteCrawler;
   private seoAnalyzer: SEOAnalyzer;
   private performanceAnalyzer: PerformanceAnalyzer;
   private accessibilityAnalyzer: AccessibilityAnalyzer;
   private securityAnalyzer: SecurityAnalyzer;
   private bestPracticesAnalyzer: BestPracticesAnalyzer;
   private db: DatabaseManager;
+  private crawlOptions: CrawlOptions;
 
   constructor(db: DatabaseManager, crawlOptions: CrawlOptions) {
     this.db = db;
+    this.crawlOptions = crawlOptions;
     this.crawler = new WebCrawler(crawlOptions);
+    this.siteCrawler = new SiteCrawler(crawlOptions);
     this.seoAnalyzer = new SEOAnalyzer();
     this.performanceAnalyzer = new PerformanceAnalyzer();
     this.accessibilityAnalyzer = new AccessibilityAnalyzer();
@@ -31,10 +37,9 @@ export class AuditService {
     try {
       // Validate and normalize URL
       const parsedUrl = new URL(url);
-      const normalizedUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}`;
       const domain = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
 
-      console.log(`Starting audit for: ${normalizedUrl}`);
+      console.log(`Starting full site audit for: ${domain}`);
 
       // Check if website exists in database
       let website = this.db.getWebsiteByUrl(domain);
@@ -47,80 +52,110 @@ export class AuditService {
         throw new Error('Failed to create website record');
       }
 
-      // Crawl the page
-      console.log('Crawling page...');
-      const crawledPage = await this.crawler.crawlSite(normalizedUrl);
+      // Perform full site crawl
+      console.log('Starting full site crawl...');
+      const crawlResult = await this.siteCrawler.crawlSite(url);
 
-      // Run all analyzers
-      console.log('Analyzing SEO...');
-      const seoResult = this.seoAnalyzer.analyze(crawledPage);
+      console.log(`Crawled ${crawlResult.crawledCount} pages, found ${crawlResult.issues.length} site-wide issues`);
 
-      console.log('Analyzing performance...');
-      const performanceResult = this.performanceAnalyzer.analyze(crawledPage);
+      // Analyze all crawled pages
+      const allIssues: Issue[] = [...crawlResult.issues.map(ci => ({
+        severity: ci.severity,
+        category: 'Site Structure',
+        title: ci.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        description: ci.message,
+        element: ci.url,
+        recommendation: this.getRecommendation(ci.type),
+      }))];
 
-      console.log('Analyzing accessibility...');
-      const accessibilityResult = this.accessibilityAnalyzer.analyze(crawledPage);
+      let totalSeoScore = 0;
+      let totalPerformanceScore = 0;
+      let totalAccessibilityScore = 0;
+      let totalSecurityScore = 0;
+      let totalBestPracticesScore = 0;
+      let analyzedCount = 0;
 
-      console.log('Analyzing security...');
-      const securityResult = this.securityAnalyzer.analyze(crawledPage);
+      // Create initial audit record
+      const initialAudit: Audit = {
+        websiteId: website.id!,
+        url: domain,
+        healthScore: 0,
+        auditDate: new Date().toISOString(),
+        status: 'in_progress',
+        metrics: this.getEmptyMetrics(),
+        issues: [],
+      };
 
-      console.log('Analyzing best practices...');
-      const bestPracticesResult = this.bestPracticesAnalyzer.analyze(crawledPage);
+      const auditId = this.db.createAudit(initialAudit);
 
-      // Check robots.txt and sitemap
-      console.log('Checking robots.txt and sitemap...');
-      const hasRobotsTxt = await this.crawler.checkRobotsTxt(domain);
-      const hasSitemap = await this.crawler.checkSitemap(domain);
+      // Analyze each page
+      for (const [pageUrl, pageData] of crawlResult.pages) {
+        try {
+          console.log(`Analyzing: ${pageUrl}`);
 
-      seoResult.metrics.robotsTxt = hasRobotsTxt;
-      seoResult.metrics.sitemap = hasSitemap;
+          // Run analyzers on this page
+          const seoResult = this.seoAnalyzer.analyze(pageData);
+          const performanceResult = this.performanceAnalyzer.analyze(pageData);
+          const accessibilityResult = this.accessibilityAnalyzer.analyze(pageData);
+          const securityResult = this.securityAnalyzer.analyze(pageData);
+          const bestPracticesResult = this.bestPracticesAnalyzer.analyze(pageData);
 
-      if (!hasRobotsTxt) {
-        seoResult.issues.push({
-          severity: 'medium',
-          category: 'SEO',
-          title: 'Missing robots.txt',
-          description: 'No robots.txt file found',
-          recommendation: 'Add a robots.txt file to guide search engine crawlers',
-        });
+          // Add page-specific issues
+          allIssues.push(...seoResult.issues, ...performanceResult.issues,
+            ...accessibilityResult.issues, ...securityResult.issues,
+            ...bestPracticesResult.issues);
+
+          // Accumulate scores
+          totalSeoScore += seoResult.metrics.score;
+          totalPerformanceScore += performanceResult.metrics.score;
+          totalAccessibilityScore += accessibilityResult.metrics.score;
+          totalSecurityScore += securityResult.metrics.score;
+          totalBestPracticesScore += bestPracticesResult.metrics.score;
+          analyzedCount++;
+
+          // Extract page metadata
+          const $ = cheerio.load(pageData.html);
+          const title = $('title').text() || '';
+          const metaDesc = $('meta[name="description"]').attr('content') || '';
+          const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
+          const wordCount = bodyText.split(' ').length;
+
+          // Store page data
+          this.db.createPage(auditId, {
+            url: pageUrl,
+            statusCode: pageData.statusCode,
+            title,
+            metaDescription: metaDesc,
+            wordCount,
+            crawledAt: new Date().toISOString(),
+            canonicalUrl: pageData.canonical,
+            contentHash: pageData.contentHash,
+            noindex: pageData.metaRobots.noindex,
+            nofollow: pageData.metaRobots.nofollow,
+            inSitemap: pageData.inSitemap,
+            incomingLinksCount: pageData.incomingLinks.length,
+            outgoingLinksCount: pageData.outgoingLinks.length,
+            loadTime: pageData.loadTime,
+            pageSize: pageData.pageSize,
+          });
+
+          // Store link relationships
+          for (const targetUrl of pageData.outgoingLinks) {
+            this.db.createLink(auditId, pageUrl, targetUrl);
+          }
+        } catch (error) {
+          console.error(`Error analyzing ${pageUrl}:`, error);
+        }
       }
 
-      if (!hasSitemap) {
-        seoResult.issues.push({
-          severity: 'medium',
-          category: 'SEO',
-          title: 'Missing Sitemap',
-          description: 'No XML sitemap found',
-          recommendation: 'Create and submit an XML sitemap to help search engines discover your content',
-        });
-      }
+      // Calculate average scores
+      const avgSeoScore = analyzedCount > 0 ? totalSeoScore / analyzedCount : 0;
+      const avgPerformanceScore = analyzedCount > 0 ? totalPerformanceScore / analyzedCount : 0;
+      const avgAccessibilityScore = analyzedCount > 0 ? totalAccessibilityScore / analyzedCount : 0;
+      const avgSecurityScore = analyzedCount > 0 ? totalSecurityScore / analyzedCount : 0;
+      const avgBestPracticesScore = analyzedCount > 0 ? totalBestPracticesScore / analyzedCount : 0;
 
-      // Check for broken links (sample first 10 internal links)
-      console.log('Checking for broken links...');
-      const linksToCheck = crawledPage.links.internal.slice(0, 10);
-      const brokenLinks = await this.crawler.checkBrokenLinks(linksToCheck);
-      seoResult.metrics.brokenLinks = brokenLinks.length;
-
-      if (brokenLinks.length > 0) {
-        seoResult.issues.push({
-          severity: 'medium',
-          category: 'SEO',
-          title: 'Broken Links Detected',
-          description: `Found ${brokenLinks.length} broken link(s)`,
-          recommendation: 'Fix or remove broken links to improve user experience and SEO',
-        });
-      }
-
-      // Combine all issues
-      const allIssues: Issue[] = [
-        ...seoResult.issues,
-        ...performanceResult.issues,
-        ...accessibilityResult.issues,
-        ...securityResult.issues,
-        ...bestPracticesResult.issues,
-      ];
-
-      // Calculate overall health score (weighted average)
+      // Calculate overall health score
       const weights = {
         seo: 0.25,
         performance: 0.25,
@@ -130,25 +165,78 @@ export class AuditService {
       };
 
       const healthScore = Math.round(
-        seoResult.metrics.score * weights.seo +
-        performanceResult.metrics.score * weights.performance +
-        accessibilityResult.metrics.score * weights.accessibility +
-        securityResult.metrics.score * weights.security +
-        bestPracticesResult.metrics.score * weights.bestPractices
+        avgSeoScore * weights.seo +
+        avgPerformanceScore * weights.performance +
+        avgAccessibilityScore * weights.accessibility +
+        avgSecurityScore * weights.security +
+        avgBestPracticesScore * weights.bestPractices
       );
 
       const metrics: AuditMetrics = {
-        seo: seoResult.metrics,
-        performance: performanceResult.metrics,
-        accessibility: accessibilityResult.metrics,
-        security: securityResult.metrics,
-        bestPractices: bestPracticesResult.metrics,
+        seo: {
+          score: Math.round(avgSeoScore),
+          titleTag: true,
+          metaDescription: true,
+          headings: { h1Count: 0, h2Count: 0, h3Count: 0, h4Count: 0, h5Count: 0, h6Count: 0 },
+          imageAltTags: 0,
+          totalImages: 0,
+          internalLinks: crawlResult.crawledCount,
+          externalLinks: 0,
+          brokenLinks: 0,
+          canonicalTag: true,
+          robotsTxt: true,
+          sitemap: crawlResult.sitemapUrls.length > 0,
+          structuredData: false,
+        },
+        performance: {
+          score: Math.round(avgPerformanceScore),
+          loadTime: 0,
+          pageSize: 0,
+          requestCount: 0,
+          timeToFirstByte: 0,
+          firstContentfulPaint: 0,
+          largestContentfulPaint: 0,
+          cumulativeLayoutShift: 0,
+          totalBlockingTime: 0,
+        },
+        accessibility: {
+          score: Math.round(avgAccessibilityScore),
+          missingAltTags: 0,
+          colorContrast: true,
+          ariaLabels: true,
+          formLabels: true,
+          buttonLabels: true,
+          htmlLang: true,
+          skipLinks: false,
+        },
+        security: {
+          score: Math.round(avgSecurityScore),
+          https: domain.startsWith('https'),
+          mixedContent: false,
+          securityHeaders: {
+            strictTransportSecurity: false,
+            contentSecurityPolicy: false,
+            xFrameOptions: false,
+            xContentTypeOptions: false,
+            referrerPolicy: false,
+          },
+          vulnerabilities: [],
+        },
+        bestPractices: {
+          score: Math.round(avgBestPracticesScore),
+          doctype: true,
+          charset: true,
+          viewport: true,
+          console_errors: 0,
+          deprecated_apis: 0,
+        },
       };
 
-      // Create audit record
+      // Create final audit
       const audit: Audit = {
+        id: auditId,
         websiteId: website.id!,
-        url: normalizedUrl,
+        url: domain,
         healthScore,
         auditDate: new Date().toISOString(),
         status: 'completed',
@@ -156,11 +244,7 @@ export class AuditService {
         issues: allIssues,
       };
 
-      console.log('Saving audit to database...');
-      const auditId = this.db.createAudit(audit);
-      audit.id = auditId;
-
-      // Save issues
+      // Save all issues
       allIssues.forEach(issue => {
         this.db.createIssue(auditId, issue);
       });
@@ -168,13 +252,89 @@ export class AuditService {
       // Update website's last audited date
       this.db.updateWebsiteLastAudited(website.id!);
 
-      console.log(`Audit completed with health score: ${healthScore}`);
+      console.log(`Audit completed. Health score: ${healthScore}, Pages: ${crawlResult.crawledCount}, Issues: ${allIssues.length}`);
 
       return audit;
     } catch (error: any) {
       console.error('Audit failed:', error);
       throw new Error(`Audit failed: ${error.message}`);
     }
+  }
+
+  private getEmptyMetrics(): AuditMetrics {
+    return {
+      seo: {
+        score: 0,
+        titleTag: false,
+        metaDescription: false,
+        headings: { h1Count: 0, h2Count: 0, h3Count: 0, h4Count: 0, h5Count: 0, h6Count: 0 },
+        imageAltTags: 0,
+        totalImages: 0,
+        internalLinks: 0,
+        externalLinks: 0,
+        brokenLinks: 0,
+        canonicalTag: false,
+        robotsTxt: false,
+        sitemap: false,
+        structuredData: false,
+      },
+      performance: {
+        score: 0,
+        loadTime: 0,
+        pageSize: 0,
+        requestCount: 0,
+        timeToFirstByte: 0,
+        firstContentfulPaint: 0,
+        largestContentfulPaint: 0,
+        cumulativeLayoutShift: 0,
+        totalBlockingTime: 0,
+      },
+      accessibility: {
+        score: 0,
+        missingAltTags: 0,
+        colorContrast: false,
+        ariaLabels: false,
+        formLabels: false,
+        buttonLabels: false,
+        htmlLang: false,
+        skipLinks: false,
+      },
+      security: {
+        score: 0,
+        https: false,
+        mixedContent: false,
+        securityHeaders: {
+          strictTransportSecurity: false,
+          contentSecurityPolicy: false,
+          xFrameOptions: false,
+          xContentTypeOptions: false,
+          referrerPolicy: false,
+        },
+        vulnerabilities: [],
+      },
+      bestPractices: {
+        score: 0,
+        doctype: false,
+        charset: false,
+        viewport: false,
+        console_errors: 0,
+        deprecated_apis: 0,
+      },
+    };
+  }
+
+  private getRecommendation(issueType: string): string {
+    const recommendations: Record<string, string> = {
+      'orphan_page': 'Add internal links from other pages to make this page discoverable',
+      'no_outgoing_links': 'Add relevant internal links to help users navigate your site',
+      'noindex_in_sitemap': 'Remove this page from sitemap or remove the noindex directive',
+      'non_canonical_in_sitemap': 'Only include canonical URLs in your sitemap',
+      'canonical_no_incoming_links': 'Add internal links pointing to this canonical URL',
+      'missing_from_sitemap': 'Add this page to your XML sitemap',
+      'duplicate_content': 'Use canonical tags to specify the preferred version of this content',
+    };
+
+    return recommendations[issueType] || 'Review and fix this issue';
   }
 
   getAuditById(id: number): Audit | undefined {
@@ -195,5 +355,13 @@ export class AuditService {
 
   getWebsiteByUrl(url: string) {
     return this.db.getWebsiteByUrl(url);
+  }
+
+  getPagesForAudit(auditId: number) {
+    return this.db.getPagesForAudit(auditId);
+  }
+
+  getLinksForAudit(auditId: number) {
+    return this.db.getLinksForAudit(auditId);
   }
 }

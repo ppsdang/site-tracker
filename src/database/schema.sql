@@ -109,8 +109,34 @@ CREATE TABLE IF NOT EXISTS pages (
     meta_description TEXT,
     word_count INTEGER,
     crawled_at TEXT NOT NULL,
+    canonical_url TEXT,
+    content_hash TEXT,
+    noindex INTEGER DEFAULT 0,
+    nofollow INTEGER DEFAULT 0,
+    in_sitemap INTEGER DEFAULT 0,
+    incoming_links_count INTEGER DEFAULT 0,
+    outgoing_links_count INTEGER DEFAULT 0,
+    load_time REAL,
+    page_size INTEGER,
 
     FOREIGN KEY (audit_id) REFERENCES audits(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_pages_audit_id ON pages(audit_id);
+CREATE INDEX IF NOT EXISTS idx_pages_content_hash ON pages(content_hash);
+CREATE INDEX IF NOT EXISTS idx_pages_url ON pages(url);
+
+-- Links table (for tracking internal link relationships)
+CREATE TABLE IF NOT EXISTS links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    audit_id INTEGER NOT NULL,
+    from_url TEXT NOT NULL,
+    to_url TEXT NOT NULL,
+    anchor_text TEXT,
+
+    FOREIGN KEY (audit_id) REFERENCES audits(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_links_audit_id ON links(audit_id);
+CREATE INDEX IF NOT EXISTS idx_links_from_url ON links(from_url);
+CREATE INDEX IF NOT EXISTS idx_links_to_url ON links(to_url);
