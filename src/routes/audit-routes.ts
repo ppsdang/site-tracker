@@ -122,5 +122,53 @@ export function createAuditRoutes(
     }
   });
 
+  // Get all pages for an audit
+  router.get('/audits/:id/pages', (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid audit ID' });
+      }
+
+      const pages = auditService.getPagesForAudit(id);
+
+      return res.json({
+        success: true,
+        data: pages,
+      });
+    } catch (error: any) {
+      console.error('Error fetching pages:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch pages',
+      });
+    }
+  });
+
+  // Get all links for an audit
+  router.get('/audits/:id/links', (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid audit ID' });
+      }
+
+      const links = auditService.getLinksForAudit(id);
+
+      return res.json({
+        success: true,
+        data: links,
+      });
+    } catch (error: any) {
+      console.error('Error fetching links:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch links',
+      });
+    }
+  });
+
   return router;
 }
