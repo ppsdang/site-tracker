@@ -4,7 +4,8 @@
   "description": "Website audit and health checker similar to Ahrefs",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-files",
+    "copy-files": "mkdir -p dist/database && cp src/database/schema.sql dist/database/",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
     "dev:watch": "nodemon --exec ts-node src/server.ts",
