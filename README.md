@@ -1,29 +1,44 @@
 # Site Tracker
 
-A comprehensive website audit and health checker similar to Ahrefs. Analyze websites for SEO, performance, accessibility, security, and best practices. Compare audits over time and benchmark against similar websites.
+A comprehensive website audit and health checker similar to Ahrefs. Crawl entire websites, analyze for SEO, performance, accessibility, security, and best practices. Track improvements over time and discover critical site-wide issues.
 
 ## Features
 
-- **Comprehensive Website Audits**: Analyze websites across 5 key areas
-  - SEO (Search Engine Optimization)
-  - Performance (Load times, page size, Core Web Vitals)
-  - Accessibility (WCAG compliance, screen reader support)
-  - Security (HTTPS, security headers, vulnerabilities)
-  - Best Practices (HTML standards, deprecated APIs)
+### 🚀 Full-Site Crawling
+- **Sitemap Discovery**: Automatically finds and parses XML sitemaps
+- **Robots.txt Compliance**: Respects robots.txt rules and crawl directives
+- **Link Discovery**: Discovers pages through internal link analysis
+- **Configurable Limits**: Control crawl depth and maximum pages per site
 
-- **Health Score**: Overall website health score (0-100) based on weighted metrics
+### 🔍 Comprehensive Website Audits
+Analyze across 5 key areas:
+  - **SEO**: Meta tags, headings, structured data, canonical tags
+  - **Performance**: Load times, page size, Core Web Vitals estimates
+  - **Accessibility**: WCAG compliance, ARIA labels, screen reader support
+  - **Security**: HTTPS, security headers, mixed content detection
+  - **Best Practices**: HTML5 standards, deprecated APIs
 
-- **Issue Detection**: Identify critical, high, medium, and low severity issues with actionable recommendations
+### 🎯 Advanced Issue Detection
+- **Orphan Pages**: Identifies pages with no incoming internal links
+- **Duplicate Content**: Detects duplicate pages without proper canonical tags
+- **Canonical Issues**: Finds non-canonical pages in sitemaps
+- **Noindex Problems**: Detects noindex pages incorrectly included in sitemaps
+- **Link Analysis**: Pages with no outgoing links or broken link graphs
+- **Sitemap Validation**: Identifies pages missing from sitemap but discoverable
 
-- **Historical Comparison**: Compare current audit with previous audits to track improvements
+### 📊 Analysis & Reporting
+- **Health Score**: Overall website health score (0-100) with weighted metrics
+- **Per-Page Analysis**: Detailed metrics for every crawled page
+- **Link Graph**: Complete internal linking structure
+- **Historical Comparison**: Track improvements over time
+- **Trend Analysis**: Visualize metrics across multiple audits
+- **Benchmarking**: Compare against similar websites
 
-- **Trend Analysis**: View audit trends over time with visual charts
-
-- **Benchmarking**: Compare your website against similar audited websites
-
-- **RESTful API**: Full-featured REST API for integration with other tools
-
-- **Web Dashboard**: Beautiful, responsive web interface for viewing audit results
+### 🔧 Technical Features
+- **RESTful API**: Full-featured REST API for integration
+- **Web Dashboard**: Beautiful, responsive interface
+- **Database Storage**: SQLite with complete audit history
+- **Bulk Operations**: Process multiple pages efficiently
 
 ## Technology Stack
 
