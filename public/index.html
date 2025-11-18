@@ -14,31 +14,87 @@
         </header>
 
         <main>
-            <!-- Audit Form -->
+            <!-- Website Selection / Add New -->
             <section class="card">
-                <h2>Start New Audit</h2>
-                <form id="auditForm">
-                    <div class="form-group">
-                        <label for="urlInput">Website URL</label>
-                        <input
-                            type="url"
-                            id="urlInput"
-                            placeholder="https://example.com"
-                            required
-                        >
+                <h2>Websites</h2>
+                <div class="website-actions">
+                    <button id="addWebsiteBtn" class="btn btn-primary">+ Add New Website</button>
+                </div>
+
+                <div id="addWebsiteForm" class="add-website-form" style="display: none;">
+                    <h3>Add New Website</h3>
+                    <form id="newWebsiteForm">
+                        <div class="form-group">
+                            <label for="newWebsiteUrl">Website URL</label>
+                            <input
+                                type="url"
+                                id="newWebsiteUrl"
+                                placeholder="https://example.com"
+                                required
+                            >
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Start Initial Audit</button>
+                            <button type="button" id="cancelAddBtn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="websitesList" class="websites-grid"></div>
+            </section>
+
+            <!-- Selected Website Details -->
+            <section id="websiteDetails" class="card" style="display: none;">
+                <div class="website-header">
+                    <div>
+                        <h2 id="selectedWebsiteUrl">example.com</h2>
+                        <p class="website-meta">
+                            Last audited: <span id="lastAuditDate">Never</span> |
+                            Total audits: <span id="totalAudits">0</span>
+                        </p>
                     </div>
-                    <button type="submit" id="auditButton" class="btn btn-primary">
-                        Run Audit
-                    </button>
-                </form>
-                <div id="auditProgress" class="progress" style="display: none;">
-                    <div class="progress-text">Analyzing website...</div>
+                    <button id="runNewAuditBtn" class="btn btn-primary">🚀 Run New Audit</button>
+                </div>
+
+                <!-- Audit History -->
+                <div class="audit-history">
+                    <h3>Audit History</h3>
+                    <div id="auditHistoryList"></div>
+                </div>
+            </section>
+
+            <!-- Audit Progress -->
+            <section id="auditProgress" class="card" style="display: none;">
+                <h2>Audit in Progress</h2>
+                <div class="progress-container">
+                    <div class="progress-info">
+                        <div class="progress-stat">
+                            <span class="stat-label">Crawled Pages</span>
+                            <span class="stat-value" id="crawledCount">0</span>
+                        </div>
+                        <div class="progress-stat">
+                            <span class="stat-label">Queued Pages</span>
+                            <span class="stat-value" id="queuedCount">0</span>
+                        </div>
+                        <div class="progress-stat">
+                            <span class="stat-label">Issues Found</span>
+                            <span class="stat-value" id="issuesCount">0</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Initializing...</div>
+                    <div id="currentPagesCrawled" class="pages-list"></div>
                 </div>
             </section>
 
             <!-- Audit Results -->
             <section id="resultsSection" class="card" style="display: none;">
-                <h2>Audit Results</h2>
+                <div class="results-header">
+                    <h2>Audit Results</h2>
+                    <button id="viewAllPagesBtn" class="btn btn-secondary">View All Pages</button>
+                </div>
 
                 <div class="health-score-container">
                     <div class="health-score">
@@ -46,6 +102,21 @@
                             <span id="healthScoreValue">0</span>
                         </div>
                         <div class="score-label">Overall Health Score</div>
+                    </div>
+                </div>
+
+                <div class="audit-summary">
+                    <div class="summary-stat">
+                        <span class="summary-label">Total Pages Crawled</span>
+                        <span class="summary-value" id="totalPagesCrawled">0</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-label">Pages from Sitemap</span>
+                        <span class="summary-value" id="sitemapPagesCount">0</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-label">Discovered Pages</span>
+                        <span class="summary-value" id="discoveredPagesCount">0</span>
                     </div>
                 </div>
 
@@ -118,22 +189,33 @@
                     </div>
                     <div id="issuesList"></div>
                 </div>
+            </section>
 
-                <!-- Comparison -->
-                <div class="comparison-section" id="comparisonSection" style="display: none;">
-                    <h3>Comparison with Previous Audit</h3>
-                    <div id="comparisonContent"></div>
+            <!-- All Pages Modal -->
+            <div id="pagesModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>All Crawled Pages</h2>
+                        <button class="modal-close" id="closeModalBtn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="pages-filters">
+                            <input type="text" id="pageSearchInput" placeholder="Search pages...">
+                            <select id="pageFilterSelect">
+                                <option value="all">All Pages</option>
+                                <option value="sitemap">In Sitemap</option>
+                                <option value="discovered">Discovered</option>
+                                <option value="orphan">Orphan Pages</option>
+                                <option value="noindex">Noindex Pages</option>
+                            </select>
+                        </div>
+                        <div id="pagesListContainer"></div>
+                    </div>
                 </div>
-            </section>
-
-            <!-- Recent Websites -->
-            <section class="card">
-                <h2>Recently Audited Websites</h2>
-                <div id="websitesList" class="websites-list"></div>
-            </section>
+            </div>
         </main>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app-enhanced.js"></script>
 </body>
 </html>

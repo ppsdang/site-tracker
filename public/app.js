@@ -2,16 +2,33 @@ const API_BASE_URL = window.location.origin + '/api';
 
 let currentFilter = 'all';
 let currentAudit = null;
+let selectedWebsite = null;
+let allPages = [];
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-    loadRecentWebsites();
+    loadWebsites();
     setupEventListeners();
 });
 
 function setupEventListeners() {
-    // Audit form submission
-    document.getElementById('auditForm').addEventListener('submit', handleAuditSubmit);
+    // Add website button
+    document.getElementById('addWebsiteBtn').addEventListener('click', () => {
+        document.getElementById('addWebsiteForm').style.display = 'block';
+        document.getElementById('addWebsiteBtn').style.display = 'none';
+    });
+
+    document.getElementById('cancelAddBtn').addEventListener('click', () => {
+        document.getElementById('addWebsiteForm').style.display = 'none';
+        document.getElementById('addWebsiteBtn').style.display = 'block';
+        document.getElementById('newWebsiteForm').reset();
+    });
+
+    // New website form
+    document.getElementById('newWebsiteForm').addEventListener('submit', handleAddWebsite);
+
+    // Run new audit button
+    document.getElementById('runNewAuditBtn')?.addEventListener('click', handleRunNewAudit);
 
     // Issue filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -24,21 +41,176 @@ function setupEventListeners() {
             }
         });
     });
+
+    // View all pages button
+    document.getElementById('viewAllPagesBtn')?.addEventListener('click', showAllPagesModal);
+
+    // Close modal
+    document.getElementById('closeModalBtn')?.addEventListener('click', closeModal);
+
+    // Page search
+    document.getElementById('pageSearchInput')?.addEventListener('input', filterPages);
+    document.getElementById('pageFilterSelect')?.addEventListener('change', filterPages);
 }
 
-async function handleAuditSubmit(e) {
+async function loadWebsites() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/websites`);
+        const result = await response.json();
+
+        if (result.success) {
+            displayWebsites(result.data);
+        }
+    } catch (error) {
+        console.error('Error loading websites:', error);
+    }
+}
+
+function displayWebsites(websites) {
+    const container = document.getElementById('websitesList');
+
+    if (websites.length === 0) {
+        container.innerHTML = '<p class="empty-state">No websites added yet. Click "Add New Website" to get started.</p>';
+        return;
+    }
+
+    container.innerHTML = websites.map(website => `
+        <div class="website-card" onclick="selectWebsite(${website.id}, '${escapeHtml(website.url)}')">
+            <div class="website-card-url">${escapeHtml(website.url)}</div>
+            <div class="website-card-meta">
+                ${website.last_audited_at ? `Last audit: ${formatDate(website.last_audited_at)}` : 'Not audited yet'}
+            </div>
+        </div>
+    `).join('');
+}
+
+async function selectWebsite(websiteId, url) {
+    selectedWebsite = { id: websiteId, url };
+
+    // Hide add form, show details
+    document.getElementById('addWebsiteForm').style.display = 'none';
+    document.getElementById('addWebsiteBtn').style.display = 'block';
+    document.getElementById('websiteDetails').style.display = 'block';
+    document.getElementById('selectedWebsiteUrl').textContent = url;
+
+    // Load audit history
+    await loadAuditHistory(websiteId);
+}
+
+async function loadAuditHistory(websiteId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/websites/${websiteId}/audits?limit=20`);
+        const result = await response.json();
+
+        if (result.success) {
+            const audits = result.data;
+            document.getElementById('totalAudits').textContent = audits.length;
+
+            if (audits.length > 0) {
+                document.getElementById('lastAuditDate').textContent = formatDate(audits[0].audit_date);
+                displayAuditHistory(audits);
+            } else {
+                document.getElementById('lastAuditDate').textContent = 'Never';
+                document.getElementById('auditHistoryList').innerHTML = '<p class="empty-state">No audits yet. Click "Run New Audit" to start.</p>';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading audit history:', error);
+    }
+}
+
+function displayAuditHistory(audits) {
+    const container = document.getElementById('auditHistoryList');
+
+    container.innerHTML = audits.map(audit => `
+        <div class="audit-history-item" onclick="loadAuditDetails(${audit.id})">
+            <div class="audit-history-date">${formatDate(audit.audit_date)}</div>
+            <div class="audit-history-score">
+                <span class="score-badge score-${getScoreClass(audit.health_score)}">${audit.health_score}</span>
+            </div>
+            <div class="audit-history-status">
+                <span class="status-badge status-${audit.status}">${audit.status}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function handleAddWebsite(e) {
     e.preventDefault();
 
-    const url = document.getElementById('urlInput').value;
-    const auditButton = document.getElementById('auditButton');
-    const auditProgress = document.getElementById('auditProgress');
-    const resultsSection = document.getElementById('resultsSection');
+    const url = document.getElementById('newWebsiteUrl').value;
+    const progressSection = document.getElementById('auditProgress');
+    const addForm = document.getElementById('addWebsiteForm');
 
     // Show progress
-    auditButton.disabled = true;
-    auditButton.textContent = 'Analyzing...';
-    auditProgress.style.display = 'block';
+    addForm.style.display = 'none';
+    progressSection.style.display = 'block';
+    updateProgress('Initializing full site crawl...', 0);
+
+    try {
+        // Start the audit
+        const audit = await startAudit(url);
+
+        // Audit completed
+        document.getElementById('newWebsiteForm').reset();
+        progressSection.style.display = 'none';
+
+        // Reload websites and select the new one
+        await loadWebsites();
+
+        // Show results
+        currentAudit = audit;
+        displayAuditResults(audit);
+
+        // Load pages
+        await loadAuditPages(audit.id);
+    } catch (error) {
+        alert('Error: ' + error.message);
+        progressSection.style.display = 'none';
+        addForm.style.display = 'block';
+    }
+}
+
+async function handleRunNewAudit() {
+    if (!selectedWebsite) return;
+
+    const progressSection = document.getElementById('auditProgress');
+    const resultsSection = document.getElementById('resultsSection');
+
+    // Hide results, show progress
     resultsSection.style.display = 'none';
+    progressSection.style.display = 'block';
+    updateProgress('Initializing full site crawl...', 0);
+
+    try {
+        // Start the audit
+        const audit = await startAudit(selectedWebsite.url);
+
+        // Audit completed
+        progressSection.style.display = 'none';
+
+        // Reload audit history
+        await loadAuditHistory(selectedWebsite.id);
+
+        // Show results
+        currentAudit = audit;
+        displayAuditResults(audit);
+
+        // Load pages
+        await loadAuditPages(audit.id);
+    } catch (error) {
+        alert('Error: ' + error.message);
+        progressSection.style.display = 'none';
+    }
+}
+
+async function startAudit(url) {
+    // Simulate progress updates (since backend doesn't stream progress)
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress = Math.min(progress + 5, 90);
+        updateProgress(`Crawling pages... (This may take a few minutes)`, progress);
+    }, 1000);
 
     try {
         const response = await fetch(`${API_BASE_URL}/audits`, {
@@ -49,29 +221,68 @@ async function handleAuditSubmit(e) {
             body: JSON.stringify({ url }),
         });
 
+        clearInterval(progressInterval);
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+
+        updateProgress('Audit completed!', 100);
+        setTimeout(() => {}, 500);
+
+        return result.data;
+    } catch (error) {
+        clearInterval(progressInterval);
+        throw error;
+    }
+}
+
+function updateProgress(text, percentage) {
+    document.getElementById('progressText').textContent = text;
+    document.getElementById('progressBarFill').style.width = `${percentage}%`;
+
+    // Update stats if available
+    const crawledPages = Math.floor(percentage / 2); // Simulated
+    document.getElementById('crawledCount').textContent = crawledPages;
+    document.getElementById('queuedCount').textContent = Math.max(0, 50 - crawledPages);
+}
+
+async function loadAuditPages(auditId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/audits/${auditId}/pages`);
+        const result = await response.json();
+
+        if (result.success) {
+            allPages = result.data;
+        }
+    } catch (error) {
+        console.error('Error loading pages:', error);
+    }
+}
+
+async function loadAuditDetails(auditId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/audits/${auditId}`);
         const result = await response.json();
 
         if (result.success) {
             currentAudit = result.data;
             displayAuditResults(result.data);
-            loadComparison(result.data.id);
-            loadRecentWebsites();
-        } else {
-            alert('Error: ' + result.error);
+            await loadAuditPages(auditId);
         }
     } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to run audit. Please try again.');
-    } finally {
-        auditButton.disabled = false;
-        auditButton.textContent = 'Run Audit';
-        auditProgress.style.display = 'none';
+        console.error('Error loading audit details:', error);
     }
 }
 
 function displayAuditResults(audit) {
     const resultsSection = document.getElementById('resultsSection');
     resultsSection.style.display = 'block';
+
+    // Scroll to results
+    resultsSection.scrollIntoView({ behavior: 'smooth' });
 
     // Health score
     const healthScoreValue = document.getElementById('healthScoreValue');
@@ -80,15 +291,13 @@ function displayAuditResults(audit) {
 
     // Set color based on score
     healthScoreCircle.classList.remove('excellent', 'good', 'fair', 'poor');
-    if (audit.healthScore >= 90) {
-        healthScoreCircle.classList.add('excellent');
-    } else if (audit.healthScore >= 75) {
-        healthScoreCircle.classList.add('good');
-    } else if (audit.healthScore >= 50) {
-        healthScoreCircle.classList.add('fair');
-    } else {
-        healthScoreCircle.classList.add('poor');
-    }
+    healthScoreCircle.classList.add(getScoreClass(audit.healthScore));
+
+    // Summary stats
+    document.getElementById('totalPagesCrawled').textContent = allPages.length;
+    const sitemapPages = allPages.filter(p => p.in_sitemap).length;
+    document.getElementById('sitemapPagesCount').textContent = sitemapPages;
+    document.getElementById('discoveredPagesCount').textContent = allPages.length - sitemapPages;
 
     // Individual metrics
     updateMetric('seo', audit.metrics.seo.score);
@@ -99,14 +308,12 @@ function displayAuditResults(audit) {
 
     // Issues
     displayIssues(audit.issues);
-
-    // Scroll to results
-    resultsSection.scrollIntoView({ behavior: 'smooth' });
 }
 
 function updateMetric(name, score) {
-    document.getElementById(`${name}Score`).textContent = Math.round(score);
-    document.getElementById(`${name}Bar`).style.width = `${score}%`;
+    const roundedScore = Math.round(score);
+    document.getElementById(`${name}Score`).textContent = roundedScore;
+    document.getElementById(`${name}Bar`).style.width = `${roundedScore}%`;
 }
 
 function displayIssues(issues) {
@@ -121,7 +328,7 @@ function displayIssues(issues) {
     issueCount.textContent = filteredIssues.length;
 
     if (filteredIssues.length === 0) {
-        issuesList.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No issues found in this category</p>';
+        issuesList.innerHTML = '<p class="empty-state">No issues found in this category</p>';
         return;
     }
 
@@ -131,176 +338,103 @@ function displayIssues(issues) {
                 <span class="issue-title">${escapeHtml(issue.title)}</span>
                 <span class="issue-severity ${issue.severity}">${issue.severity}</span>
             </div>
+            <div class="issue-category">${escapeHtml(issue.category)}</div>
             <div class="issue-description">${escapeHtml(issue.description)}</div>
-            ${issue.element ? `<div style="font-size: 0.9rem; color: #999; margin: 5px 0;">Element: ${escapeHtml(issue.element)}</div>` : ''}
+            ${issue.element ? `<div class="issue-element">Element: ${escapeHtml(issue.element)}</div>` : ''}
             <div class="issue-recommendation">💡 ${escapeHtml(issue.recommendation)}</div>
         </div>
     `).join('');
 }
 
-async function loadComparison(auditId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/audits/${auditId}/comparison`);
-        const result = await response.json();
-
-        if (result.success && result.data.previous) {
-            displayComparison(result.data);
-        }
-    } catch (error) {
-        console.error('Error loading comparison:', error);
-    }
-}
-
-function displayComparison(comparison) {
-    const comparisonSection = document.getElementById('comparisonSection');
-    const comparisonContent = document.getElementById('comparisonContent');
-
-    const changes = comparison.changes;
-
-    comparisonContent.innerHTML = `
-        <div class="comparison-metrics">
-            <div class="comparison-metric">
-                <div class="comparison-label">Health Score Change</div>
-                <div class="comparison-value ${getChangeClass(changes.healthScoreDiff)}">
-                    ${formatChange(changes.healthScoreDiff)}
-                </div>
-            </div>
-            <div class="comparison-metric">
-                <div class="comparison-label">SEO</div>
-                <div class="comparison-value ${getChangeClass(changes.metricChanges.seo)}">
-                    ${formatChange(changes.metricChanges.seo)}
-                </div>
-            </div>
-            <div class="comparison-metric">
-                <div class="comparison-label">Performance</div>
-                <div class="comparison-value ${getChangeClass(changes.metricChanges.performance)}">
-                    ${formatChange(changes.metricChanges.performance)}
-                </div>
-            </div>
-            <div class="comparison-metric">
-                <div class="comparison-label">Accessibility</div>
-                <div class="comparison-value ${getChangeClass(changes.metricChanges.accessibility)}">
-                    ${formatChange(changes.metricChanges.accessibility)}
-                </div>
-            </div>
-            <div class="comparison-metric">
-                <div class="comparison-label">Security</div>
-                <div class="comparison-value ${getChangeClass(changes.metricChanges.security)}">
-                    ${formatChange(changes.metricChanges.security)}
-                </div>
-            </div>
-            <div class="comparison-metric">
-                <div class="comparison-label">Best Practices</div>
-                <div class="comparison-value ${getChangeClass(changes.metricChanges.bestPractices)}">
-                    ${formatChange(changes.metricChanges.bestPractices)}
-                </div>
-            </div>
-        </div>
-
-        ${changes.newIssues.length > 0 ? `
-            <div style="margin-top: 20px;">
-                <h4 style="color: #e53935;">New Issues (${changes.newIssues.length})</h4>
-                <ul style="padding-left: 20px; color: #666;">
-                    ${changes.newIssues.slice(0, 5).map(issue =>
-                        `<li>${escapeHtml(issue.title)} (${issue.severity})</li>`
-                    ).join('')}
-                    ${changes.newIssues.length > 5 ? '<li>... and more</li>' : ''}
-                </ul>
-            </div>
-        ` : ''}
-
-        ${changes.resolvedIssues.length > 0 ? `
-            <div style="margin-top: 20px;">
-                <h4 style="color: #4caf50;">Resolved Issues (${changes.resolvedIssues.length})</h4>
-                <ul style="padding-left: 20px; color: #666;">
-                    ${changes.resolvedIssues.slice(0, 5).map(issue =>
-                        `<li>${escapeHtml(issue.title)} (${issue.severity})</li>`
-                    ).join('')}
-                    ${changes.resolvedIssues.length > 5 ? '<li>... and more</li>' : ''}
-                </ul>
-            </div>
-        ` : ''}
-    `;
-
-    comparisonSection.style.display = 'block';
-}
-
-async function loadRecentWebsites() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/websites`);
-        const result = await response.json();
-
-        if (result.success) {
-            displayWebsites(result.data);
-        }
-    } catch (error) {
-        console.error('Error loading websites:', error);
-    }
-}
-
-function displayWebsites(websites) {
-    const websitesList = document.getElementById('websitesList');
-
-    if (websites.length === 0) {
-        websitesList.innerHTML = '<p style="text-align: center; color: #666;">No websites audited yet</p>';
+function showAllPagesModal() {
+    if (allPages.length === 0) {
+        alert('No pages data available. Please wait for the audit to complete.');
         return;
     }
 
-    // Get latest audits for each website
-    Promise.all(
-        websites.map(async (website) => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/websites/${website.id}/latest-audit`);
-                const result = await response.json();
-                return result.success ? result.data : null;
-            } catch (error) {
-                return null;
-            }
-        })
-    ).then(audits => {
-        websitesList.innerHTML = audits
-            .filter(audit => audit !== null)
-            .slice(0, 10)
-            .map(audit => `
-                <div class="website-item" onclick="loadAuditDetails(${audit.id})">
-                    <div>
-                        <div class="website-url">${escapeHtml(audit.url)}</div>
-                        <div style="font-size: 0.85rem; color: #999; margin-top: 5px;">
-                            ${formatDate(audit.auditDate)}
-                        </div>
-                    </div>
-                    <div class="website-score">${audit.healthScore}</div>
-                </div>
-            `).join('');
-    });
+    document.getElementById('pagesModal').style.display = 'flex';
+    filterPages();
 }
 
-async function loadAuditDetails(auditId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/audits/${auditId}`);
-        const result = await response.json();
+function closeModal() {
+    document.getElementById('pagesModal').style.display = 'none';
+}
 
-        if (result.success) {
-            currentAudit = result.data;
-            displayAuditResults(result.data);
-            loadComparison(result.data.id);
-        }
-    } catch (error) {
-        console.error('Error loading audit details:', error);
+function filterPages() {
+    const searchTerm = document.getElementById('pageSearchInput').value.toLowerCase();
+    const filterType = document.getElementById('pageFilterSelect').value;
+
+    let filtered = allPages;
+
+    // Apply filter
+    if (filterType === 'sitemap') {
+        filtered = filtered.filter(p => p.in_sitemap === 1);
+    } else if (filterType === 'discovered') {
+        filtered = filtered.filter(p => p.in_sitemap === 0);
+    } else if (filterType === 'orphan') {
+        filtered = filtered.filter(p => p.incoming_links_count === 0);
+    } else if (filterType === 'noindex') {
+        filtered = filtered.filter(p => p.noindex === 1);
     }
+
+    // Apply search
+    if (searchTerm) {
+        filtered = filtered.filter(p => p.url.toLowerCase().includes(searchTerm));
+    }
+
+    displayFilteredPages(filtered);
 }
 
-function getChangeClass(value) {
-    if (value > 0) return 'positive';
-    if (value < 0) return 'negative';
-    return 'neutral';
+function displayFilteredPages(pages) {
+    const container = document.getElementById('pagesListContainer');
+
+    if (pages.length === 0) {
+        container.innerHTML = '<p class="empty-state">No pages match your criteria</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="pages-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>URL</th>
+                        <th>Status</th>
+                        <th>In Sitemap</th>
+                        <th>Incoming Links</th>
+                        <th>Outgoing Links</th>
+                        <th>Issues</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${pages.map(page => `
+                        <tr>
+                            <td class="page-url" title="${escapeHtml(page.url)}">
+                                ${truncateUrl(page.url, 50)}
+                                ${page.canonical_url && page.canonical_url !== page.url ? '<span class="badge">Non-canonical</span>' : ''}
+                                ${page.noindex ? '<span class="badge badge-warning">Noindex</span>' : ''}
+                            </td>
+                            <td>${page.status_code || 'N/A'}</td>
+                            <td>${page.in_sitemap ? '✅' : '❌'}</td>
+                            <td>${page.incoming_links_count || 0}</td>
+                            <td>${page.outgoing_links_count || 0}</td>
+                            <td>
+                                ${page.incoming_links_count === 0 ? '<span class="badge badge-danger">Orphan</span>' : ''}
+                                ${page.noindex && page.in_sitemap ? '<span class="badge badge-danger">Noindex in sitemap</span>' : ''}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
 }
 
-function formatChange(value) {
-    const rounded = Math.round(value);
-    if (rounded > 0) return `+${rounded}`;
-    if (rounded < 0) return `${rounded}`;
-    return '0';
+function getScoreClass(score) {
+    if (score >= 90) return 'excellent';
+    if (score >= 75) return 'good';
+    if (score >= 50) return 'fair';
+    return 'poor';
 }
 
 function formatDate(dateString) {
@@ -312,6 +446,11 @@ function formatDate(dateString) {
         hour: '2-digit',
         minute: '2-digit'
     });
+}
+
+function truncateUrl(url, maxLength) {
+    if (url.length <= maxLength) return escapeHtml(url);
+    return escapeHtml(url.substring(0, maxLength)) + '...';
 }
 
 function escapeHtml(text) {
