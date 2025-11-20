@@ -106,6 +106,26 @@ async function loadAuditHistory(websiteId) {
             const audits = result.data;
             document.getElementById('totalAudits').textContent = audits.length;
 
+            // Check if there's an in-progress audit
+            const inProgressAudit = audits.find(audit => audit.status === 'in_progress');
+            const runAuditBtn = document.getElementById('runNewAuditBtn');
+
+            if (inProgressAudit) {
+                // Disable button and show message
+                runAuditBtn.disabled = true;
+                runAuditBtn.classList.add('disabled');
+                runAuditBtn.textContent = '⏳ Audit in Progress';
+
+                // Optionally show the in-progress audit details
+                document.getElementById('auditProgress').style.display = 'block';
+                document.getElementById('progressText').textContent = 'An audit is currently running for this website...';
+            } else {
+                // Enable button
+                runAuditBtn.disabled = false;
+                runAuditBtn.classList.remove('disabled');
+                runAuditBtn.textContent = '🚀 Run New Audit';
+            }
+
             if (audits.length > 0) {
                 document.getElementById('lastAuditDate').textContent = formatDate(audits[0].auditDate);
                 displayAuditHistory(audits);
@@ -174,8 +194,21 @@ async function handleAddWebsite(e) {
 async function handleRunNewAudit() {
     if (!selectedWebsite) return;
 
+    const runAuditBtn = document.getElementById('runNewAuditBtn');
+
+    // Check if button is disabled (audit already in progress)
+    if (runAuditBtn.disabled) {
+        alert('An audit is already in progress for this website. Please wait for it to complete.');
+        return;
+    }
+
     const progressSection = document.getElementById('auditProgress');
     const resultsSection = document.getElementById('resultsSection');
+
+    // Disable button while audit is running
+    runAuditBtn.disabled = true;
+    runAuditBtn.classList.add('disabled');
+    runAuditBtn.textContent = '⏳ Audit in Progress';
 
     // Hide results, show progress
     resultsSection.style.display = 'none';
@@ -189,7 +222,7 @@ async function handleRunNewAudit() {
         // Audit completed
         progressSection.style.display = 'none';
 
-        // Reload audit history
+        // Reload audit history (this will re-enable the button)
         await loadAuditHistory(selectedWebsite.id);
 
         // Show results
@@ -201,6 +234,11 @@ async function handleRunNewAudit() {
     } catch (error) {
         alert('Error: ' + error.message);
         progressSection.style.display = 'none';
+
+        // Re-enable button on error
+        runAuditBtn.disabled = false;
+        runAuditBtn.classList.remove('disabled');
+        runAuditBtn.textContent = '🚀 Run New Audit';
     }
 }
 

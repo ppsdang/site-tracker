@@ -56,36 +56,36 @@
                     <button id="runNewAuditBtn" class="btn btn-primary">🚀 Run New Audit</button>
                 </div>
 
+                <!-- Audit Progress (moved here to show right after button) -->
+                <section id="auditProgress" class="audit-progress-inline" style="display: none;">
+                    <h3>Audit in Progress</h3>
+                    <div class="progress-container">
+                        <div class="progress-info">
+                            <div class="progress-stat">
+                                <span class="stat-label">Crawled Pages</span>
+                                <span class="stat-value" id="crawledCount">0</span>
+                            </div>
+                            <div class="progress-stat">
+                                <span class="stat-label">Queued Pages</span>
+                                <span class="stat-value" id="queuedCount">0</span>
+                            </div>
+                            <div class="progress-stat">
+                                <span class="stat-label">Issues Found</span>
+                                <span class="stat-value" id="issuesCount">0</span>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill" id="progressBarFill"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">Initializing...</div>
+                        <div id="currentPagesCrawled" class="pages-list"></div>
+                    </div>
+                </section>
+
                 <!-- Audit History -->
                 <div class="audit-history">
                     <h3>Audit History</h3>
                     <div id="auditHistoryList"></div>
-                </div>
-            </section>
-
-            <!-- Audit Progress -->
-            <section id="auditProgress" class="card" style="display: none;">
-                <h2>Audit in Progress</h2>
-                <div class="progress-container">
-                    <div class="progress-info">
-                        <div class="progress-stat">
-                            <span class="stat-label">Crawled Pages</span>
-                            <span class="stat-value" id="crawledCount">0</span>
-                        </div>
-                        <div class="progress-stat">
-                            <span class="stat-label">Queued Pages</span>
-                            <span class="stat-value" id="queuedCount">0</span>
-                        </div>
-                        <div class="progress-stat">
-                            <span class="stat-label">Issues Found</span>
-                            <span class="stat-value" id="issuesCount">0</span>
-                        </div>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-bar-fill" id="progressBarFill"></div>
-                    </div>
-                    <div class="progress-text" id="progressText">Initializing...</div>
-                    <div id="currentPagesCrawled" class="pages-list"></div>
                 </div>
             </section>
 
