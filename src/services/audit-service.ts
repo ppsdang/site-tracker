@@ -29,15 +29,19 @@ export class AuditService {
   }
 
   async auditWebsite(url: string): Promise<Audit> {
+    let auditId: number | undefined;
+    let domain: string = url;
+    let website: any;
+
     try {
       // Validate and normalize URL
       const parsedUrl = new URL(url);
-      const domain = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
+      domain = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
 
       console.log(`Starting full site audit for: ${domain}`);
 
       // Check if website exists in database
-      let website = this.db.getWebsiteByUrl(domain);
+      website = this.db.getWebsiteByUrl(domain);
       if (!website) {
         const websiteId = this.db.createWebsite(domain, parsedUrl.hostname);
         website = this.db.getWebsiteById(websiteId);
@@ -81,7 +85,7 @@ export class AuditService {
         issues: [],
       };
 
-      const auditId = this.db.createAudit(initialAudit);
+      auditId = this.db.createAudit(initialAudit);
 
       // Analyze each page
       for (const [pageUrl, pageData] of crawlResult.pages) {
@@ -240,21 +244,44 @@ export class AuditService {
       };
 
       // Update the audit record in database with final results
+      console.log(`Updating audit ${auditId} with health score: ${healthScore}, status: completed`);
       this.db.updateAudit(auditId, audit);
+      console.log(`Successfully updated audit ${auditId} in database`);
 
       // Save all issues
+      console.log(`Saving ${allIssues.length} issues...`);
       allIssues.forEach(issue => {
-        this.db.createIssue(auditId, issue);
+        this.db.createIssue(auditId!, issue);
       });
 
       // Update website's last audited date
       this.db.updateWebsiteLastAudited(website.id!);
 
-      console.log(`Audit completed. Health score: ${healthScore}, Pages: ${crawlResult.crawledCount}, Issues: ${allIssues.length}`);
+      console.log(`Audit ${auditId} completed successfully. Health score: ${healthScore}, Pages: ${crawlResult.crawledCount}, Issues: ${allIssues.length}`);
 
       return audit;
     } catch (error: any) {
       console.error('Audit failed:', error);
+
+      // Mark audit as failed in database
+      try {
+        if (auditId) {
+          this.db.updateAudit(auditId, {
+            id: auditId,
+            websiteId: website!.id!,
+            url: domain || url,
+            healthScore: 0,
+            auditDate: new Date().toISOString(),
+            status: 'failed',
+            metrics: this.getEmptyMetrics(),
+            issues: [],
+          });
+          console.log(`Marked audit ${auditId} as failed`);
+        }
+      } catch (updateError) {
+        console.error('Failed to update audit status to failed:', updateError);
+      }
+
       throw new Error(`Audit failed: ${error.message}`);
     }
   }
