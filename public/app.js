@@ -308,6 +308,87 @@ function displayAuditResults(audit) {
 
     // Issues
     displayIssues(audit.issues);
+
+    // Load comparison with previous audit
+    loadComparison(audit.id);
+}
+
+async function loadComparison(auditId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/audits/${auditId}/comparison`);
+        const result = await response.json();
+
+        if (result.success && result.data.previous) {
+            displayComparison(result.data);
+        } else {
+            // Hide comparison section if no previous audit
+            document.getElementById('comparisonSection').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading comparison:', error);
+        document.getElementById('comparisonSection').style.display = 'none';
+    }
+}
+
+function displayComparison(comparison) {
+    const comparisonSection = document.getElementById('comparisonSection');
+    comparisonSection.style.display = 'block';
+
+    const changes = comparison.changes;
+
+    // Health score change
+    const healthScoreChange = document.getElementById('healthScoreChange');
+    const healthScoreDiff = document.getElementById('healthScoreDiff');
+    updateChangeIndicator(healthScoreChange, changes.healthScoreDiff);
+    healthScoreDiff.textContent = formatChange(changes.healthScoreDiff);
+    healthScoreDiff.className = 'comparison-value ' + getChangeClass(changes.healthScoreDiff);
+
+    // Metric changes
+    updateMetricChange('seo', changes.metricChanges.seo);
+    updateMetricChange('performance', changes.metricChanges.performance);
+    updateMetricChange('accessibility', changes.metricChanges.accessibility);
+    updateMetricChange('security', changes.metricChanges.security);
+    updateMetricChange('bestPractices', changes.metricChanges.bestPractices);
+
+    // Issue changes
+    document.getElementById('newIssuesCount').textContent = changes.newIssues.length;
+    document.getElementById('resolvedIssuesCount').textContent = changes.resolvedIssues.length;
+
+    // Pages crawled difference (if we track this)
+    const pagesDiff = 0; // Calculate from audit data if needed
+    document.getElementById('pagesCrawledDiff').textContent = allPages.length;
+}
+
+function updateMetricChange(metricName, change) {
+    const changeElement = document.getElementById(`${metricName}Change`);
+    if (changeElement) {
+        updateChangeIndicator(changeElement, change);
+    }
+}
+
+function updateChangeIndicator(element, change) {
+    if (change === 0) {
+        element.textContent = '';
+        element.className = 'metric-change neutral';
+    } else if (change > 0) {
+        element.textContent = `↑ +${Math.round(change)}`;
+        element.className = 'metric-change positive';
+    } else {
+        element.textContent = `↓ ${Math.round(change)}`;
+        element.className = 'metric-change negative';
+    }
+}
+
+function formatChange(change) {
+    if (change === 0) return '→ No change';
+    const sign = change > 0 ? '↑' : '↓';
+    return `${sign} ${Math.abs(Math.round(change))}`;
+}
+
+function getChangeClass(change) {
+    if (change > 0) return 'positive';
+    if (change < 0) return 'negative';
+    return 'neutral';
 }
 
 function updateMetric(name, score) {

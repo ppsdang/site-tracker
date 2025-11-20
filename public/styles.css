@@ -357,34 +357,64 @@ input[type="url"]:focus {
 }
 
 .comparison-section {
-    margin-top: 40px;
-    padding-top: 30px;
-    border-top: 2px solid #e0e0e0;
+    margin: 30px 0;
+    padding: 25px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.comparison-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    margin-top: 20px;
+.comparison-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
-.comparison-metric {
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    text-align: center;
+.comparison-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #333;
 }
 
-.comparison-label {
+.compare-select {
+    padding: 8px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
     font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.comparison-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.comparison-title {
+    font-size: 0.85rem;
     color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     margin-bottom: 10px;
 }
 
 .comparison-value {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .comparison-value.positive {
@@ -397,6 +427,40 @@ input[type="url"]:focus {
 
 .comparison-value.neutral {
     color: #666;
+}
+
+.score-change,
+.metric-change {
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin-left: auto;
+}
+
+.score-change.positive,
+.metric-change.positive {
+    color: #2e7d32;
+    background: #e8f5e9;
+}
+
+.score-change.negative,
+.metric-change.negative {
+    color: #c62828;
+    background: #ffebee;
+}
+
+.score-change.neutral,
+.metric-change.neutral {
+    color: #666;
+    background: #f5f5f5;
+}
+
+.metric-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 @media (max-width: 768px) {

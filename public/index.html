@@ -100,8 +100,37 @@
                     <div class="health-score">
                         <div class="score-circle" id="healthScoreCircle">
                             <span id="healthScoreValue">0</span>
+                            <span id="healthScoreChange" class="score-change"></span>
                         </div>
                         <div class="score-label">Overall Health Score</div>
+                    </div>
+                </div>
+
+                <!-- Comparison with Previous Audit -->
+                <div id="comparisonSection" class="comparison-section" style="display: none;">
+                    <div class="comparison-header">
+                        <h3>Comparison with Previous Audit</h3>
+                        <select id="compareAuditSelect" class="compare-select">
+                            <option value="previous">Previous Audit</option>
+                        </select>
+                    </div>
+                    <div class="comparison-grid">
+                        <div class="comparison-card">
+                            <div class="comparison-title">Health Score Change</div>
+                            <div class="comparison-value" id="healthScoreDiff">--</div>
+                        </div>
+                        <div class="comparison-card">
+                            <div class="comparison-title">New Issues</div>
+                            <div class="comparison-value positive" id="newIssuesCount">--</div>
+                        </div>
+                        <div class="comparison-card">
+                            <div class="comparison-title">Resolved Issues</div>
+                            <div class="comparison-value negative" id="resolvedIssuesCount">--</div>
+                        </div>
+                        <div class="comparison-card">
+                            <div class="comparison-title">Pages Crawled</div>
+                            <div class="comparison-value" id="pagesCrawledDiff">--</div>
+                        </div>
                     </div>
                 </div>
 
@@ -125,6 +154,7 @@
                         <div class="metric-header">
                             <span class="metric-icon">🔍</span>
                             <span class="metric-name">SEO</span>
+                            <span class="metric-change" id="seoChange"></span>
                         </div>
                         <div class="metric-score" id="seoScore">0</div>
                         <div class="metric-bar">
@@ -136,6 +166,7 @@
                         <div class="metric-header">
                             <span class="metric-icon">⚡</span>
                             <span class="metric-name">Performance</span>
+                            <span class="metric-change" id="performanceChange"></span>
                         </div>
                         <div class="metric-score" id="performanceScore">0</div>
                         <div class="metric-bar">
@@ -147,6 +178,7 @@
                         <div class="metric-header">
                             <span class="metric-icon">♿</span>
                             <span class="metric-name">Accessibility</span>
+                            <span class="metric-change" id="accessibilityChange"></span>
                         </div>
                         <div class="metric-score" id="accessibilityScore">0</div>
                         <div class="metric-bar">
@@ -158,6 +190,7 @@
                         <div class="metric-header">
                             <span class="metric-icon">🔒</span>
                             <span class="metric-name">Security</span>
+                            <span class="metric-change" id="securityChange"></span>
                         </div>
                         <div class="metric-score" id="securityScore">0</div>
                         <div class="metric-bar">
@@ -169,6 +202,7 @@
                         <div class="metric-header">
                             <span class="metric-icon">✅</span>
                             <span class="metric-name">Best Practices</span>
+                            <span class="metric-change" id="bestPracticesChange"></span>
                         </div>
                         <div class="metric-score" id="bestPracticesScore">0</div>
                         <div class="metric-bar">
