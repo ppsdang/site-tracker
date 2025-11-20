@@ -144,7 +144,9 @@ export class SiteCrawler {
       }
 
       try {
-        console.log(`Crawling [${crawledCount + 1}/${this.options.maxPages}]: ${currentUrl}`);
+        // Show actual discovered URLs instead of max limit
+        const totalDiscovered = crawledCount + this.urlQueue.length;
+        console.log(`Crawling [${crawledCount + 1}/${totalDiscovered}]: ${currentUrl}`);
         const pageData = await this.crawlPage(currentUrl);
         this.pages.set(currentUrl, pageData);
         this.visitedUrls.add(currentUrl);
