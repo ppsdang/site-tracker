@@ -107,7 +107,7 @@ async function loadAuditHistory(websiteId) {
             document.getElementById('totalAudits').textContent = audits.length;
 
             if (audits.length > 0) {
-                document.getElementById('lastAuditDate').textContent = formatDate(audits[0].audit_date);
+                document.getElementById('lastAuditDate').textContent = formatDate(audits[0].auditDate);
                 displayAuditHistory(audits);
             } else {
                 document.getElementById('lastAuditDate').textContent = 'Never';
@@ -124,9 +124,9 @@ function displayAuditHistory(audits) {
 
     container.innerHTML = audits.map(audit => `
         <div class="audit-history-item" onclick="loadAuditDetails(${audit.id})">
-            <div class="audit-history-date">${formatDate(audit.audit_date)}</div>
+            <div class="audit-history-date">${formatDate(audit.auditDate)}</div>
             <div class="audit-history-score">
-                <span class="score-badge score-${getScoreClass(audit.health_score)}">${audit.health_score}</span>
+                <span class="score-badge score-${getScoreClass(audit.healthScore)}">${audit.healthScore}</span>
             </div>
             <div class="audit-history-status">
                 <span class="status-badge status-${audit.status}">${audit.status}</span>
