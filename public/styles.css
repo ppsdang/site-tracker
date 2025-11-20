@@ -137,6 +137,7 @@ input[type="url"]:focus {
     height: 200px;
     border-radius: 50%;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     font-size: 4rem;
@@ -145,6 +146,22 @@ input[type="url"]:focus {
     margin: 0 auto 15px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     transition: all 0.5s;
+    position: relative;
+}
+
+.score-circle #healthScoreValue {
+    line-height: 1;
+}
+
+.score-circle .score-change {
+    position: absolute;
+    bottom: 30px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin-left: 0;
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .score-circle.excellent {
@@ -152,11 +169,11 @@ input[type="url"]:focus {
 }
 
 .score-circle.good {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: linear-gradient(135deg, #ff9800 0%, #ffa726 100%);
 }
 
 .score-circle.fair {
-    background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
+    background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
 }
 
 .score-circle.poor {
@@ -661,8 +678,8 @@ input[type="url"]:focus {
 }
 
 .score-badge.score-good {
-    background: #d1ecf1;
-    color: #0c5460;
+    background: #ffe0b2;
+    color: #e65100;
 }
 
 .score-badge.score-fair {

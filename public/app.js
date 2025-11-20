@@ -692,10 +692,10 @@ function displayFilteredPages(pages) {
 }
 
 function getScoreClass(score) {
-    if (score >= 90) return 'excellent';
-    if (score >= 75) return 'good';
-    if (score >= 50) return 'fair';
-    return 'poor';
+    if (score >= 80) return 'excellent';  // Green
+    if (score >= 60) return 'good';       // Orange
+    if (score >= 20) return 'fair';       // Yellow
+    return 'poor';                         // Red
 }
 
 function formatDate(dateString) {
