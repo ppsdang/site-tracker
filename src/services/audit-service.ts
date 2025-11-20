@@ -10,7 +10,7 @@ import { URL } from 'url';
 import * as cheerio from 'cheerio';
 
 export class AuditService {
-  private siteCrawler: SiteCrawler;
+  private crawlOptions: CrawlOptions;
   private seoAnalyzer: SEOAnalyzer;
   private performanceAnalyzer: PerformanceAnalyzer;
   private accessibilityAnalyzer: AccessibilityAnalyzer;
@@ -20,7 +20,7 @@ export class AuditService {
 
   constructor(db: DatabaseManager, crawlOptions: CrawlOptions) {
     this.db = db;
-    this.siteCrawler = new SiteCrawler(crawlOptions);
+    this.crawlOptions = crawlOptions;
     this.seoAnalyzer = new SEOAnalyzer();
     this.performanceAnalyzer = new PerformanceAnalyzer();
     this.accessibilityAnalyzer = new AccessibilityAnalyzer();
@@ -51,9 +51,23 @@ export class AuditService {
         throw new Error('Failed to create website record');
       }
 
-      // Perform full site crawl
+      // Create initial audit record FIRST to get auditId for progress tracking
+      const initialAudit: Audit = {
+        websiteId: website.id!,
+        url: domain,
+        healthScore: 0,
+        auditDate: new Date().toISOString(),
+        status: 'in_progress',
+        metrics: this.getEmptyMetrics(),
+        issues: [],
+      };
+
+      auditId = this.db.createAudit(initialAudit);
+
+      // Perform full site crawl with progress tracking
       console.log('Starting full site crawl...');
-      const crawlResult = await this.siteCrawler.crawlSite(url);
+      const siteCrawler = new SiteCrawler(this.crawlOptions, auditId);
+      const crawlResult = await siteCrawler.crawlSite(url);
 
       console.log(`Crawled ${crawlResult.crawledCount} pages, found ${crawlResult.issues.length} site-wide issues`);
 
@@ -73,19 +87,6 @@ export class AuditService {
       let totalSecurityScore = 0;
       let totalBestPracticesScore = 0;
       let analyzedCount = 0;
-
-      // Create initial audit record
-      const initialAudit: Audit = {
-        websiteId: website.id!,
-        url: domain,
-        healthScore: 0,
-        auditDate: new Date().toISOString(),
-        status: 'in_progress',
-        metrics: this.getEmptyMetrics(),
-        issues: [],
-      };
-
-      auditId = this.db.createAudit(initialAudit);
 
       // Analyze each page
       for (const [pageUrl, pageData] of crawlResult.pages) {

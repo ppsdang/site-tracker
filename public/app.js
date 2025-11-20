@@ -243,14 +243,10 @@ async function handleRunNewAudit() {
 }
 
 async function startAudit(url) {
-    // Simulate progress updates (since backend doesn't stream progress)
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        progress = Math.min(progress + 5, 90);
-        updateProgress(`Crawling pages... (This may take a few minutes)`, progress);
-    }, 1000);
+    let eventSource = null;
 
     try {
+        // Start the audit
         const response = await fetch(`${API_BASE_URL}/audits`, {
             method: 'POST',
             headers: {
@@ -259,32 +255,112 @@ async function startAudit(url) {
             body: JSON.stringify({ url }),
         });
 
-        clearInterval(progressInterval);
-
         const result = await response.json();
 
         if (!result.success) {
             throw new Error(result.error);
         }
 
-        updateProgress('Audit completed!', 100);
-        setTimeout(() => {}, 500);
+        // Get the audit ID to connect to SSE
+        const auditId = result.data.id;
 
-        return result.data;
+        // Connect to SSE for real-time progress
+        eventSource = new EventSource(`${API_BASE_URL}/audits/${auditId}/progress`);
+
+        return new Promise((resolve, reject) => {
+            eventSource.onmessage = (event) => {
+                try {
+                    const progressData = JSON.parse(event.data);
+                    console.log('Progress event:', progressData);
+
+                    switch (progressData.type) {
+                        case 'connected':
+                            updateProgress('Connected to audit stream...', 0);
+                            break;
+
+                        case 'sitemap':
+                            updateProgress(
+                                `Discovered ${progressData.totalUrls || 0} URLs from sitemap(s)`,
+                                5,
+                                0,
+                                progressData.totalUrls || 0
+                            );
+                            break;
+
+                        case 'crawling':
+                            updateProgress(
+                                progressData.message,
+                                progressData.percentage || 0,
+                                progressData.crawledCount || 0,
+                                progressData.queuedCount || 0,
+                                progressData.currentUrl
+                            );
+                            break;
+
+                        case 'analyzing':
+                            updateProgress(
+                                'Analyzing crawled pages and detecting issues...',
+                                95,
+                                progressData.crawledCount || 0,
+                                0
+                            );
+                            break;
+
+                        case 'completed':
+                            updateProgress('Audit completed!', 100, progressData.crawledCount || 0, 0);
+                            eventSource.close();
+                            setTimeout(() => {
+                                resolve(result.data);
+                            }, 500);
+                            break;
+
+                        case 'error':
+                            eventSource.close();
+                            reject(new Error(progressData.message || 'Audit failed'));
+                            break;
+                    }
+                } catch (error) {
+                    console.error('Error parsing SSE data:', error);
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('SSE error:', error);
+                eventSource.close();
+                // Don't reject on error - the audit might still complete
+                // We'll fall back to checking the result
+                setTimeout(() => {
+                    resolve(result.data);
+                }, 1000);
+            };
+        });
     } catch (error) {
-        clearInterval(progressInterval);
+        if (eventSource) {
+            eventSource.close();
+        }
         throw error;
     }
 }
 
-function updateProgress(text, percentage) {
+function updateProgress(text, percentage, crawledCount, queuedCount, currentUrl) {
     document.getElementById('progressText').textContent = text;
     document.getElementById('progressBarFill').style.width = `${percentage}%`;
 
-    // Update stats if available
-    const crawledPages = Math.floor(percentage / 2); // Simulated
-    document.getElementById('crawledCount').textContent = crawledPages;
-    document.getElementById('queuedCount').textContent = Math.max(0, 50 - crawledPages);
+    // Update stats with real data
+    if (crawledCount !== undefined) {
+        document.getElementById('crawledCount').textContent = crawledCount;
+    }
+
+    if (queuedCount !== undefined) {
+        document.getElementById('queuedCount').textContent = queuedCount;
+    }
+
+    // Update current URL if provided
+    const currentUrlElement = document.getElementById('currentUrl');
+    if (currentUrlElement && currentUrl) {
+        currentUrlElement.textContent = currentUrl;
+        currentUrlElement.title = currentUrl; // Show full URL on hover
+    }
 }
 
 async function loadAuditPages(auditId) {

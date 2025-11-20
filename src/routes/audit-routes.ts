@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { AuditService } from '../services/audit-service';
 import { ComparisonService } from '../services/comparison-service';
+import { ProgressTracker } from '../services/progress-tracker';
 
 export function createAuditRoutes(
   auditService: AuditService,
@@ -24,7 +25,33 @@ export function createAuditRoutes(
         return res.status(400).json({ error: 'Invalid URL format' });
       }
 
-      const audit = await auditService.auditWebsite(url);
+      // Start the audit in the background (don't await)
+      const auditPromise = auditService.auditWebsite(url);
+
+      // Get the initial audit data (status='in_progress') to return immediately
+      // Wait briefly to get the auditId
+      const audit = await Promise.race([
+        auditPromise,
+        new Promise<any>((resolve) => {
+          // Give it a second to create the audit record and start
+          setTimeout(async () => {
+            // Check if we have a recently created audit for this URL
+            const website = auditService.getWebsiteByUrl(url);
+            if (website) {
+              const latestAudit = auditService.getLatestAuditForWebsite(website.id!);
+              if (latestAudit && latestAudit.status === 'in_progress') {
+                resolve(latestAudit);
+              }
+            }
+          }, 500);
+        })
+      ]);
+
+      // Continue the audit in the background
+      auditPromise.catch(error => {
+        console.error('Background audit error:', error);
+      });
+
       return res.status(201).json({
         success: true,
         data: audit,
@@ -168,6 +195,62 @@ export function createAuditRoutes(
         error: error.message || 'Failed to fetch links',
       });
     }
+  });
+
+  // SSE endpoint for real-time audit progress
+  router.get('/audits/:id/progress', (req: Request, res: Response): void => {
+    const id = parseInt(req.params.id);
+
+    if (isNaN(id)) {
+      res.status(400).json({ error: 'Invalid audit ID' });
+      return;
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering in nginx
+
+    // Send initial connection message
+    res.write('data: {"type":"connected","message":"Connected to progress stream"}\n\n');
+
+    // Get or create progress tracker for this audit
+    const tracker = ProgressTracker.getTracker(id);
+
+    // Listen for progress events
+    const progressHandler = (event: any) => {
+      try {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      } catch (error) {
+        console.error('Error writing SSE data:', error);
+      }
+    };
+
+    tracker.on('progress', progressHandler);
+
+    // Handle client disconnect
+    req.on('close', () => {
+      console.log(`Client disconnected from audit ${id} progress stream`);
+      tracker.removeListener('progress', progressHandler);
+      res.end();
+    });
+
+    // Keep connection alive with periodic heartbeat
+    const heartbeat = setInterval(() => {
+      try {
+        res.write(': heartbeat\n\n');
+      } catch (error) {
+        clearInterval(heartbeat);
+      }
+    }, 15000); // Send heartbeat every 15 seconds
+
+    // Cleanup on response end
+    res.on('finish', () => {
+      clearInterval(heartbeat);
+    });
+
+    // Keep connection alive - no return needed for SSE endpoints
   });
 
   return router;

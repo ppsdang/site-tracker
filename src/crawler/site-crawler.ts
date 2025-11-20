@@ -4,6 +4,7 @@ import { RobotsParser } from './robots-parser';
 import { CrawlOptions } from '../types';
 import crypto from 'crypto';
 import { URL } from 'url';
+import { ProgressTracker } from '../services/progress-tracker';
 
 export interface PageData extends CrawledPage {
   metaRobots: {
@@ -43,8 +44,10 @@ export class SiteCrawler {
   private urlQueue: string[];
   private pages: Map<string, PageData>;
   private sitemapUrls: Set<string>;
+  private auditId?: number;
+  private progressTracker?: ProgressTracker;
 
-  constructor(options: CrawlOptions) {
+  constructor(options: CrawlOptions, auditId?: number) {
     this.options = options;
     this.crawler = new WebCrawler(options);
     this.sitemapParser = new SitemapParser();
@@ -54,6 +57,10 @@ export class SiteCrawler {
     this.pages = new Map();
     this.sitemapUrls = new Set();
     this.baseUrl = new URL('http://example.com');
+    this.auditId = auditId;
+    if (auditId) {
+      this.progressTracker = ProgressTracker.getTracker(auditId);
+    }
   }
 
   async crawlSite(url: string): Promise<CrawlResult> {
@@ -84,6 +91,15 @@ export class SiteCrawler {
     }
 
     console.log(`Found ${sitemapPages.length} URLs in sitemap(s)`);
+
+    // Emit sitemap progress
+    if (this.progressTracker) {
+      this.progressTracker.emitProgress({
+        type: 'sitemap',
+        message: `Discovered ${sitemapPages.length} URLs from sitemap(s)`,
+        totalUrls: sitemapPages.length,
+      });
+    }
 
     // Store sitemap URLs
     sitemapPages.forEach(page => this.sitemapUrls.add(this.normalizeUrl(page.loc)));
@@ -128,6 +144,20 @@ export class SiteCrawler {
         this.visitedUrls.add(currentUrl);
         crawledCount++;
 
+        // Emit crawling progress
+        if (this.progressTracker) {
+          const percentage = Math.round((crawledCount / this.options.maxPages) * 100);
+          this.progressTracker.emitProgress({
+            type: 'crawling',
+            message: `Crawling pages`,
+            crawledCount,
+            totalUrls: Math.max(this.urlQueue.length + crawledCount, sitemapPages.length),
+            queuedCount: this.urlQueue.length,
+            currentUrl,
+            percentage,
+          });
+        }
+
         // Discover new URLs from internal links (if not nofollow)
         if (!pageData.metaRobots.nofollow) {
           for (const link of pageData.links.internal) {
@@ -149,9 +179,33 @@ export class SiteCrawler {
 
     console.log(`Crawl complete. Crawled: ${crawledCount}, Skipped: ${skippedCount}`);
 
+    // Emit analyzing progress
+    if (this.progressTracker) {
+      this.progressTracker.emitProgress({
+        type: 'analyzing',
+        message: `Analyzing crawled pages and detecting issues`,
+        crawledCount,
+      });
+    }
+
     // Step 5: Build link graph and detect issues
     this.buildLinkGraph();
     const issues = this.detectIssues();
+
+    // Emit completion progress
+    if (this.progressTracker) {
+      this.progressTracker.emitProgress({
+        type: 'completed',
+        message: `Crawl completed`,
+        crawledCount,
+        issuesCount: issues.length,
+      });
+    }
+
+    // Cleanup tracker
+    if (this.auditId) {
+      ProgressTracker.removeTracker(this.auditId);
+    }
 
     return {
       pages: this.pages,
