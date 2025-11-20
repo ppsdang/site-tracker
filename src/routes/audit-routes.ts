@@ -197,6 +197,49 @@ export function createAuditRoutes(
     }
   });
 
+  // Cancel an audit
+  router.post('/audits/:id/cancel', (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid audit ID' });
+      }
+
+      // Check if audit exists and is in progress
+      const audit = auditService.getAuditById(id);
+
+      if (!audit) {
+        return res.status(404).json({ error: 'Audit not found' });
+      }
+
+      if (audit.status !== 'in_progress') {
+        return res.status(400).json({
+          error: `Cannot cancel audit with status '${audit.status}'`
+        });
+      }
+
+      // Set cancellation flag to stop the crawl
+      ProgressTracker.cancelAudit(id);
+
+      // Update audit status in database
+      auditService.updateAuditStatus(id, 'cancelled');
+
+      console.log(`Audit ${id} cancelled successfully`);
+
+      return res.json({
+        success: true,
+        message: 'Audit cancelled successfully',
+      });
+    } catch (error: any) {
+      console.error('Error cancelling audit:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to cancel audit',
+      });
+    }
+  });
+
   // SSE endpoint for real-time audit progress
   router.get('/audits/:id/progress', (req: Request, res: Response): void => {
     const id = parseInt(req.params.id);

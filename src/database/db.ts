@@ -263,6 +263,13 @@ export class DatabaseManager {
     );
   }
 
+  updateAuditStatus(auditId: number, status: 'completed' | 'in_progress' | 'failed' | 'cancelled'): void {
+    const stmt = this.db.prepare(`
+      UPDATE audits SET status = ? WHERE id = ?
+    `);
+    stmt.run(status, auditId);
+  }
+
   getAuditById(id: number): Audit | undefined {
     const stmt = this.db.prepare('SELECT * FROM audits WHERE id = ?');
     const row = stmt.get(id) as any;

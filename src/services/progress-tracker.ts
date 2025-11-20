@@ -13,6 +13,7 @@ export interface ProgressEvent {
 
 export class ProgressTracker extends EventEmitter {
   private static instances: Map<number, ProgressTracker> = new Map();
+  private static cancellationFlags: Map<number, boolean> = new Map();
 
   static getTracker(auditId: number): ProgressTracker {
     if (!this.instances.has(auditId)) {
@@ -27,6 +28,26 @@ export class ProgressTracker extends EventEmitter {
       tracker.removeAllListeners();
       this.instances.delete(auditId);
     }
+    // Also remove cancellation flag
+    this.cancellationFlags.delete(auditId);
+  }
+
+  static cancelAudit(auditId: number): void {
+    console.log(`Cancellation requested for audit ${auditId}`);
+    this.cancellationFlags.set(auditId, true);
+
+    // Emit cancellation event to SSE listeners
+    const tracker = this.instances.get(auditId);
+    if (tracker) {
+      tracker.emitProgress({
+        type: 'error',
+        message: 'Audit cancelled by user',
+      });
+    }
+  }
+
+  static isCancelled(auditId: number): boolean {
+    return this.cancellationFlags.get(auditId) || false;
   }
 
   emitProgress(event: ProgressEvent): void {

@@ -91,6 +91,15 @@ input[type="url"]:focus {
     color: white;
 }
 
+.btn-danger {
+    background: linear-gradient(135deg, #f54242 0%, #d63031 100%);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #d63031 0%, #c0392b 100%);
+}
+
 .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -687,6 +696,11 @@ input[type="url"]:focus {
 .status-badge.status-failed {
     background: #f8d7da;
     color: #721c24;
+}
+
+.status-badge.status-cancelled {
+    background: #fff3cd;
+    color: #856404;
 }
 
 .progress-container {

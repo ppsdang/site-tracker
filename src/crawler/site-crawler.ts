@@ -123,6 +123,12 @@ export class SiteCrawler {
     let skippedCount = 0;
 
     while (this.urlQueue.length > 0 && crawledCount < this.options.maxPages) {
+      // Check for cancellation
+      if (this.auditId && ProgressTracker.isCancelled(this.auditId)) {
+        console.log(`Audit ${this.auditId} cancelled by user - stopping crawl`);
+        break;
+      }
+
       const currentUrl = this.urlQueue.shift()!;
 
       if (this.visitedUrls.has(currentUrl)) {

@@ -58,7 +58,10 @@
 
                 <!-- Audit Progress (moved here to show right after button) -->
                 <section id="auditProgress" class="audit-progress-inline" style="display: none;">
-                    <h3>Audit in Progress</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">Audit in Progress</h3>
+                        <button id="cancelAuditBtn" class="btn btn-danger" style="padding: 8px 16px; font-size: 0.9em;">❌ Cancel Audit</button>
+                    </div>
                     <div class="progress-container">
                         <div class="progress-info">
                             <div class="progress-stat">

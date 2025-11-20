@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS audits (
     url TEXT NOT NULL,
     health_score REAL NOT NULL,
     audit_date TEXT NOT NULL,
-    status TEXT NOT NULL CHECK(status IN ('completed', 'in_progress', 'failed')),
+    status TEXT NOT NULL CHECK(status IN ('completed', 'in_progress', 'failed', 'cancelled')),
 
     -- SEO Metrics
     seo_score REAL,

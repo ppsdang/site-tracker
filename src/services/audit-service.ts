@@ -390,4 +390,8 @@ export class AuditService {
   getLinksForAudit(auditId: number) {
     return this.db.getLinksForAudit(auditId);
   }
+
+  updateAuditStatus(auditId: number, status: 'completed' | 'in_progress' | 'failed' | 'cancelled'): void {
+    this.db.updateAuditStatus(auditId, status);
+  }
 }

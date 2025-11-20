@@ -4,6 +4,8 @@ let currentFilter = 'all';
 let currentAudit = null;
 let selectedWebsite = null;
 let allPages = [];
+let currentAuditId = null;
+let currentEventSource = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,6 +31,9 @@ function setupEventListeners() {
 
     // Run new audit button
     document.getElementById('runNewAuditBtn')?.addEventListener('click', handleRunNewAudit);
+
+    // Cancel audit button
+    document.getElementById('cancelAuditBtn')?.addEventListener('click', handleCancelAudit);
 
     // Issue filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -242,6 +247,59 @@ async function handleRunNewAudit() {
     }
 }
 
+async function handleCancelAudit() {
+    if (!currentAuditId) {
+        alert('No audit is currently running');
+        return;
+    }
+
+    const confirmed = confirm('Are you sure you want to cancel this audit? All progress will be lost.');
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        // Call cancel endpoint
+        const response = await fetch(`${API_BASE_URL}/audits/${currentAuditId}/cancel`, {
+            method: 'POST',
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to cancel audit');
+        }
+
+        // Close SSE connection
+        if (currentEventSource) {
+            currentEventSource.close();
+            currentEventSource = null;
+        }
+
+        // Hide progress section
+        document.getElementById('auditProgress').style.display = 'none';
+
+        // Re-enable run audit button
+        const runAuditBtn = document.getElementById('runNewAuditBtn');
+        runAuditBtn.disabled = false;
+        runAuditBtn.classList.remove('disabled');
+        runAuditBtn.textContent = '🚀 Run New Audit';
+
+        // Reload audit history to show cancelled status
+        if (selectedWebsite) {
+            await loadAuditHistory(selectedWebsite.id);
+        }
+
+        currentAuditId = null;
+
+        alert('Audit cancelled successfully');
+    } catch (error) {
+        console.error('Error cancelling audit:', error);
+        alert('Error cancelling audit: ' + error.message);
+    }
+}
+
 async function startAudit(url) {
     let eventSource = null;
 
@@ -264,8 +322,12 @@ async function startAudit(url) {
         // Get the audit ID to connect to SSE
         const auditId = result.data.id;
 
+        // Store audit ID and event source globally for cancellation
+        currentAuditId = auditId;
+
         // Connect to SSE for real-time progress
         eventSource = new EventSource(`${API_BASE_URL}/audits/${auditId}/progress`);
+        currentEventSource = eventSource;
 
         return new Promise((resolve, reject) => {
             eventSource.onmessage = (event) => {
@@ -309,6 +371,8 @@ async function startAudit(url) {
                         case 'completed':
                             updateProgress('Audit completed!', 100, progressData.crawledCount || 0, 0);
                             eventSource.close();
+                            currentEventSource = null;
+                            currentAuditId = null;
                             setTimeout(() => {
                                 resolve(result.data);
                             }, 500);
@@ -316,6 +380,8 @@ async function startAudit(url) {
 
                         case 'error':
                             eventSource.close();
+                            currentEventSource = null;
+                            currentAuditId = null;
                             reject(new Error(progressData.message || 'Audit failed'));
                             break;
                     }
