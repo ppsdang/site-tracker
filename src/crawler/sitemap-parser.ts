@@ -11,6 +11,7 @@ export interface SitemapUrl {
 export class SitemapParser {
   async fetchSitemap(sitemapUrl: string): Promise<SitemapUrl[]> {
     try {
+      console.log(`Fetching sitemap: ${sitemapUrl}`);
       const response = await axios.get(sitemapUrl, {
         timeout: 10000,
         headers: {
@@ -25,17 +26,21 @@ export class SitemapParser {
       const sitemapElements = $('sitemap');
       if (sitemapElements.length > 0) {
         // This is a sitemap index - fetch all sitemaps
+        console.log(`  Found sitemap index with ${sitemapElements.length} child sitemaps`);
         const sitemapPromises: Promise<SitemapUrl[]>[] = [];
 
         sitemapElements.each((_, elem) => {
           const loc = $(elem).find('loc').text();
           if (loc) {
+            console.log(`  - Child sitemap: ${loc}`);
             sitemapPromises.push(this.fetchSitemap(loc));
           }
         });
 
         const results = await Promise.all(sitemapPromises);
-        return results.flat();
+        const totalUrls = results.flat();
+        console.log(`  Sitemap index total URLs: ${totalUrls.length}`);
+        return totalUrls;
       }
 
       // Parse regular sitemap
@@ -55,6 +60,7 @@ export class SitemapParser {
         }
       });
 
+      console.log(`  Found ${urls.length} URLs in sitemap`);
       return urls;
     } catch (error) {
       console.error(`Failed to fetch sitemap ${sitemapUrl}:`, error);

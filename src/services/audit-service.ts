@@ -239,6 +239,9 @@ export class AuditService {
         issues: allIssues,
       };
 
+      // Update the audit record in database with final results
+      this.db.updateAudit(auditId, audit);
+
       // Save all issues
       allIssues.forEach(issue => {
         this.db.createIssue(auditId, issue);

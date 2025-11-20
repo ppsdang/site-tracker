@@ -145,6 +145,124 @@ export class DatabaseManager {
     return result.lastInsertRowid as number;
   }
 
+  updateAudit(auditId: number, audit: Audit): void {
+    const stmt = this.db.prepare(`
+      UPDATE audits SET
+        health_score = ?,
+        status = ?,
+        -- SEO
+        seo_score = ?,
+        title_tag = ?,
+        meta_description = ?,
+        h1_count = ?,
+        h2_count = ?,
+        h3_count = ?,
+        images_with_alt = ?,
+        total_images = ?,
+        internal_links = ?,
+        external_links = ?,
+        broken_links = ?,
+        canonical_tag = ?,
+        robots_txt = ?,
+        sitemap = ?,
+        structured_data = ?,
+        -- Performance
+        performance_score = ?,
+        load_time = ?,
+        page_size = ?,
+        request_count = ?,
+        time_to_first_byte = ?,
+        first_contentful_paint = ?,
+        largest_contentful_paint = ?,
+        cumulative_layout_shift = ?,
+        total_blocking_time = ?,
+        -- Accessibility
+        accessibility_score = ?,
+        missing_alt_tags = ?,
+        color_contrast = ?,
+        aria_labels = ?,
+        form_labels = ?,
+        button_labels = ?,
+        html_lang = ?,
+        skip_links = ?,
+        -- Security
+        security_score = ?,
+        https = ?,
+        mixed_content = ?,
+        strict_transport_security = ?,
+        content_security_policy = ?,
+        x_frame_options = ?,
+        x_content_type_options = ?,
+        referrer_policy = ?,
+        -- Best Practices
+        best_practices_score = ?,
+        doctype = ?,
+        charset = ?,
+        viewport = ?,
+        console_errors = ?,
+        deprecated_apis = ?
+      WHERE id = ?
+    `);
+
+    stmt.run(
+      audit.healthScore,
+      audit.status,
+      // SEO
+      audit.metrics.seo.score,
+      audit.metrics.seo.titleTag ? 1 : 0,
+      audit.metrics.seo.metaDescription ? 1 : 0,
+      audit.metrics.seo.headings.h1Count,
+      audit.metrics.seo.headings.h2Count,
+      audit.metrics.seo.headings.h3Count,
+      audit.metrics.seo.imageAltTags,
+      audit.metrics.seo.totalImages,
+      audit.metrics.seo.internalLinks,
+      audit.metrics.seo.externalLinks,
+      audit.metrics.seo.brokenLinks,
+      audit.metrics.seo.canonicalTag ? 1 : 0,
+      audit.metrics.seo.robotsTxt ? 1 : 0,
+      audit.metrics.seo.sitemap ? 1 : 0,
+      audit.metrics.seo.structuredData ? 1 : 0,
+      // Performance
+      audit.metrics.performance.score,
+      audit.metrics.performance.loadTime,
+      audit.metrics.performance.pageSize,
+      audit.metrics.performance.requestCount,
+      audit.metrics.performance.timeToFirstByte,
+      audit.metrics.performance.firstContentfulPaint,
+      audit.metrics.performance.largestContentfulPaint,
+      audit.metrics.performance.cumulativeLayoutShift,
+      audit.metrics.performance.totalBlockingTime,
+      // Accessibility
+      audit.metrics.accessibility.score,
+      audit.metrics.accessibility.missingAltTags,
+      audit.metrics.accessibility.colorContrast ? 1 : 0,
+      audit.metrics.accessibility.ariaLabels ? 1 : 0,
+      audit.metrics.accessibility.formLabels ? 1 : 0,
+      audit.metrics.accessibility.buttonLabels ? 1 : 0,
+      audit.metrics.accessibility.htmlLang ? 1 : 0,
+      audit.metrics.accessibility.skipLinks ? 1 : 0,
+      // Security
+      audit.metrics.security.score,
+      audit.metrics.security.https ? 1 : 0,
+      audit.metrics.security.mixedContent ? 1 : 0,
+      audit.metrics.security.securityHeaders.strictTransportSecurity ? 1 : 0,
+      audit.metrics.security.securityHeaders.contentSecurityPolicy ? 1 : 0,
+      audit.metrics.security.securityHeaders.xFrameOptions ? 1 : 0,
+      audit.metrics.security.securityHeaders.xContentTypeOptions ? 1 : 0,
+      audit.metrics.security.securityHeaders.referrerPolicy ? 1 : 0,
+      // Best Practices
+      audit.metrics.bestPractices.score,
+      audit.metrics.bestPractices.doctype ? 1 : 0,
+      audit.metrics.bestPractices.charset ? 1 : 0,
+      audit.metrics.bestPractices.viewport ? 1 : 0,
+      audit.metrics.bestPractices.console_errors,
+      audit.metrics.bestPractices.deprecated_apis,
+      // WHERE clause
+      auditId
+    );
+  }
+
   getAuditById(id: number): Audit | undefined {
     const stmt = this.db.prepare('SELECT * FROM audits WHERE id = ?');
     const row = stmt.get(id) as any;
