@@ -263,25 +263,26 @@ export function createAuditRoutes(
     res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering in nginx
 
     // Send initial connection message
-    console.log(`[DEBUG SSE] Client connected to audit ${id} progress stream`);
+    console.log(`[DEBUG SSE] ${new Date().toISOString()} - Client connected to audit ${id} progress stream`);
     res.write('data: {"type":"connected","message":"Connected to progress stream"}\n\n');
 
     // Get or create progress tracker for this audit
     const tracker = ProgressTracker.getTracker(id);
-    console.log(`[DEBUG SSE] ProgressTracker obtained for audit ${id}`);
+    console.log(`[DEBUG SSE] ${new Date().toISOString()} - ProgressTracker obtained for audit ${id}`);
+    console.log(`[DEBUG SSE] ${new Date().toISOString()} - Tracker has ${tracker.listenerCount('progress')} existing listeners`);
 
     // Listen for progress events
     const progressHandler = (event: any) => {
       try {
-        console.log(`[DEBUG SSE] Sending event to client:`, event.type, event.crawledCount);
+        console.log(`[DEBUG SSE] ${new Date().toISOString()} - Sending event to client: type=${event.type}, crawled=${event.crawledCount}, queued=${event.queuedCount}`);
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       } catch (error) {
-        console.error('Error writing SSE data:', error);
+        console.error(`[DEBUG SSE] ${new Date().toISOString()} - Error writing SSE data:`, error);
       }
     };
 
     tracker.on('progress', progressHandler);
-    console.log(`[DEBUG SSE] Listening for progress events on audit ${id}`);
+    console.log(`[DEBUG SSE] ${new Date().toISOString()} - Now listening for progress events on audit ${id} (${tracker.listenerCount('progress')} total listeners)`);
 
     // Handle client disconnect
     req.on('close', () => {

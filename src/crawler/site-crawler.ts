@@ -94,6 +94,7 @@ export class SiteCrawler {
 
     // Emit sitemap progress
     if (this.progressTracker) {
+      console.log(`[CRAWLER EMIT] ${new Date().toISOString()} - Emitting SITEMAP event for audit ${this.auditId}: ${sitemapPages.length} URLs`);
       this.progressTracker.emitProgress({
         type: 'sitemap',
         message: `Discovered ${sitemapPages.length} URLs from sitemap(s)`,
@@ -155,6 +156,7 @@ export class SiteCrawler {
         // Emit crawling progress
         if (this.progressTracker) {
           const percentage = Math.round((crawledCount / this.options.maxPages) * 100);
+          console.log(`[CRAWLER EMIT] ${new Date().toISOString()} - Emitting CRAWLING event for audit ${this.auditId}: crawled=${crawledCount}, queued=${this.urlQueue.length}`);
           this.progressTracker.emitProgress({
             type: 'crawling',
             message: `Crawling pages`,
@@ -189,6 +191,7 @@ export class SiteCrawler {
 
     // Emit analyzing progress
     if (this.progressTracker) {
+      console.log(`[CRAWLER EMIT] ${new Date().toISOString()} - Emitting ANALYZING event for audit ${this.auditId}`);
       this.progressTracker.emitProgress({
         type: 'analyzing',
         message: `Analyzing crawled pages and detecting issues`,
@@ -202,6 +205,7 @@ export class SiteCrawler {
 
     // Emit completion progress
     if (this.progressTracker) {
+      console.log(`[CRAWLER EMIT] ${new Date().toISOString()} - Emitting COMPLETED event for audit ${this.auditId}: ${issues.length} issues`);
       this.progressTracker.emitProgress({
         type: 'completed',
         message: `Crawl completed`,

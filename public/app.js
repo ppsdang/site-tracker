@@ -130,12 +130,18 @@ async function loadAuditHistory(websiteId) {
 
                 // Try to connect to SSE stream (in case audit is actually running)
                 try {
+                    console.log(`[${new Date().toISOString()}] Reconnecting to in-progress audit ${inProgressAudit.id}`);
                     const eventSource = new EventSource(`${API_BASE_URL}/audits/${inProgressAudit.id}/progress`);
                     currentEventSource = eventSource;
+                    console.log(`[${new Date().toISOString()}] EventSource created for reconnection, readyState: ${eventSource.readyState}`);
+
+                    eventSource.onopen = (event) => {
+                        console.log(`[${new Date().toISOString()}] ✅ SSE Reconnection OPENED for audit ${inProgressAudit.id}`);
+                    };
 
                     eventSource.onmessage = (event) => {
                         const progressData = JSON.parse(event.data);
-                        console.log('Progress event:', progressData);
+                        console.log(`[${new Date().toISOString()}] 📨 SSE Reconnection message:`, progressData);
 
                         switch (progressData.type) {
                             case 'connected':
@@ -159,8 +165,10 @@ async function loadAuditHistory(websiteId) {
                         }
                     };
 
-                    eventSource.onerror = () => {
+                    eventSource.onerror = (error) => {
                         // SSE connection failed - audit probably not actually running
+                        console.error(`[${new Date().toISOString()}] ❌ SSE Reconnection ERROR:`, error);
+                        console.error(`[${new Date().toISOString()}] EventSource readyState: ${eventSource.readyState}`);
                         eventSource.close();
                         currentEventSource = null;
                         document.getElementById('progressText').textContent =
@@ -371,14 +379,21 @@ async function startAudit(url) {
         currentAuditId = auditId;
 
         // Connect to SSE for real-time progress
+        console.log(`[${new Date().toISOString()}] Creating EventSource for audit ${auditId}`);
         eventSource = new EventSource(`${API_BASE_URL}/audits/${auditId}/progress`);
         currentEventSource = eventSource;
+        console.log(`[${new Date().toISOString()}] EventSource created, readyState: ${eventSource.readyState}`);
 
         return new Promise((resolve, reject) => {
+            eventSource.onopen = (event) => {
+                console.log(`[${new Date().toISOString()}] ✅ SSE Connection OPENED for audit ${auditId}`, event);
+                console.log(`[${new Date().toISOString()}] EventSource readyState: ${eventSource.readyState}`);
+            };
+
             eventSource.onmessage = (event) => {
                 try {
                     const progressData = JSON.parse(event.data);
-                    console.log('Progress event:', progressData);
+                    console.log(`[${new Date().toISOString()}] 📨 SSE Message received:`, progressData);
 
                     switch (progressData.type) {
                         case 'connected':
@@ -436,7 +451,9 @@ async function startAudit(url) {
             };
 
             eventSource.onerror = (error) => {
-                console.error('SSE error:', error);
+                console.error(`[${new Date().toISOString()}] ❌ SSE ERROR:`, error);
+                console.error(`[${new Date().toISOString()}] EventSource readyState: ${eventSource.readyState}`);
+                console.error(`[${new Date().toISOString()}] EventSource url: ${eventSource.url}`);
                 eventSource.close();
                 // Don't reject on error - the audit might still complete
                 // We'll fall back to checking the result
