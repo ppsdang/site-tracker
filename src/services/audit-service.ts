@@ -63,6 +63,13 @@ export class AuditService {
       };
 
       auditId = this.db.createAudit(initialAudit);
+      console.log(`Created audit ID ${auditId}, waiting for frontend to connect to SSE...`);
+
+      // Wait 1 second to give frontend time to:
+      // 1. Receive the audit ID response
+      // 2. Establish SSE connection
+      // 3. Start listening for progress events
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Perform full site crawl with progress tracking
       console.log('Starting full site crawl...');
