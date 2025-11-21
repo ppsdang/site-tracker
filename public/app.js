@@ -88,7 +88,7 @@ function displayWebsites(websites) {
                 </div>
             </div>
             <button class="delete-btn" onclick="event.stopPropagation(); deleteWebsite(${website.id}, '${escapeHtml(website.url)}')" title="Delete website and all audits">
-                🗑️
+                ×
             </button>
         </div>
     `).join('');
@@ -127,7 +127,7 @@ async function loadAuditHistory(websiteId) {
                 // Disable button and show message
                 runAuditBtn.disabled = true;
                 runAuditBtn.classList.add('disabled');
-                runAuditBtn.textContent = '⏳ Audit in Progress';
+                runAuditBtn.textContent = 'Audit in Progress';
 
                 // Show the in-progress audit details
                 document.getElementById('auditProgress').style.display = 'block';
@@ -186,7 +186,7 @@ async function loadAuditHistory(websiteId) {
                 // Enable button
                 runAuditBtn.disabled = false;
                 runAuditBtn.classList.remove('disabled');
-                runAuditBtn.textContent = '🚀 Run New Audit';
+                runAuditBtn.textContent = 'Run New Audit';
             }
 
             if (audits.length > 0) {
@@ -215,7 +215,7 @@ function displayAuditHistory(audits) {
                 <span class="status-badge status-${audit.status}">${audit.status}</span>
             </div>
             <button class="delete-btn delete-btn-small" onclick="event.stopPropagation(); deleteAudit(${audit.id})" title="Delete this audit">
-                🗑️
+                ×
             </button>
         </div>
     `).join('');
@@ -274,7 +274,7 @@ async function handleRunNewAudit() {
     // Disable button while audit is running
     runAuditBtn.disabled = true;
     runAuditBtn.classList.add('disabled');
-    runAuditBtn.textContent = '⏳ Audit in Progress';
+    runAuditBtn.textContent = 'Audit in Progress';
 
     // Hide results, show progress
     resultsSection.style.display = 'none';
@@ -304,7 +304,7 @@ async function handleRunNewAudit() {
         // Re-enable button on error
         runAuditBtn.disabled = false;
         runAuditBtn.classList.remove('disabled');
-        runAuditBtn.textContent = '🚀 Run New Audit';
+        runAuditBtn.textContent = 'Run New Audit';
     }
 }
 
@@ -345,7 +345,7 @@ async function handleCancelAudit() {
         const runAuditBtn = document.getElementById('runNewAuditBtn');
         runAuditBtn.disabled = false;
         runAuditBtn.classList.remove('disabled');
-        runAuditBtn.textContent = '🚀 Run New Audit';
+        runAuditBtn.textContent = 'Run New Audit';
 
         // Reload audit history to show cancelled status
         if (selectedWebsite) {
@@ -744,7 +744,7 @@ function displayIssuesGrouped(currentIssues, previousIssues) {
             <div class="issue-group ${changeClass}">
                 <div class="issue-group-header" onclick="toggleIssueGroup('${categoryId}')">
                     <div class="issue-group-title">
-                        <span class="issue-group-icon">📋</span>
+                        
                         <span class="issue-group-name">${escapeHtml(category)}</span>
                         <span class="issue-group-count">${currentCount} issue${currentCount !== 1 ? 's' : ''}</span>
                         ${changeIndicator}
@@ -763,7 +763,7 @@ function displayIssuesGrouped(currentIssues, previousIssues) {
                             </div>
                             <div class="issue-description">${escapeHtml(issue.description)}</div>
                             ${issue.element ? `<div class="issue-element">Element: ${escapeHtml(issue.element)}</div>` : ''}
-                            <div class="issue-recommendation">💡 ${escapeHtml(issue.recommendation)}</div>
+                            <div class="issue-recommendation">${escapeHtml(issue.recommendation)}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -866,7 +866,7 @@ function displayFilteredPages(pages) {
                                 ${page.noindex ? '<span class="badge badge-warning">Noindex</span>' : ''}
                             </td>
                             <td>${page.status_code || 'N/A'}</td>
-                            <td>${page.in_sitemap ? '✅' : '❌'}</td>
+                            <td>${page.in_sitemap ? 'Yes' : 'No'}</td>
                             <td>${page.incoming_links_count || 0}</td>
                             <td>${page.outgoing_links_count || 0}</td>
                             <td>
