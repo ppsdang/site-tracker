@@ -262,9 +262,14 @@ export function createAuditRoutes(
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering in nginx
 
+    // CRITICAL: Flush headers immediately to establish SSE connection
+    res.flushHeaders();
+    console.log(`[DEBUG SSE] ${new Date().toISOString()} - Headers flushed for audit ${id}`);
+
     // Send initial connection message
     console.log(`[DEBUG SSE] ${new Date().toISOString()} - Client connected to audit ${id} progress stream`);
     res.write('data: {"type":"connected","message":"Connected to progress stream"}\n\n');
+    console.log(`[DEBUG SSE] ${new Date().toISOString()} - Initial connection message written`);
 
     // Get or create progress tracker for this audit
     const tracker = ProgressTracker.getTracker(id);

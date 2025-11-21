@@ -25,7 +25,17 @@ app.use(helmet({
   contentSecurityPolicy: false, // Disable for development
 }));
 app.use(cors());
-app.use(compression());
+// Disable compression for SSE endpoints (text/event-stream)
+app.use(compression({
+  filter: (req, res) => {
+    // Don't compress SSE streams
+    if (req.path.includes('/progress')) {
+      return false;
+    }
+    // Use compression's default filter for everything else
+    return compression.filter(req, res);
+  }
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
