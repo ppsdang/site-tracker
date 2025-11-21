@@ -15,6 +15,21 @@ export class DatabaseManager {
     this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.initializeSchema();
+    this.cleanupStuckAudits();
+  }
+
+  private cleanupStuckAudits(): void {
+    // Mark all in_progress audits as failed on server startup
+    // This handles cases where the server was killed/crashed
+    const stmt = this.db.prepare(`
+      UPDATE audits
+      SET status = 'failed'
+      WHERE status = 'in_progress'
+    `);
+    const result = stmt.run();
+    if (result.changes > 0) {
+      console.log(`⚠️  Cleaned up ${result.changes} stuck audit(s) from previous session`);
+    }
   }
 
   private initializeSchema(): void {

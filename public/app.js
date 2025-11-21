@@ -116,14 +116,59 @@ async function loadAuditHistory(websiteId) {
             const runAuditBtn = document.getElementById('runNewAuditBtn');
 
             if (inProgressAudit) {
+                // Store audit ID so cancel button can work
+                currentAuditId = inProgressAudit.id;
+
                 // Disable button and show message
                 runAuditBtn.disabled = true;
                 runAuditBtn.classList.add('disabled');
                 runAuditBtn.textContent = '⏳ Audit in Progress';
 
-                // Optionally show the in-progress audit details
+                // Show the in-progress audit details
                 document.getElementById('auditProgress').style.display = 'block';
-                document.getElementById('progressText').textContent = 'An audit is currently running for this website...';
+                document.getElementById('progressText').textContent = 'Reconnecting to audit in progress...';
+
+                // Try to connect to SSE stream (in case audit is actually running)
+                try {
+                    const eventSource = new EventSource(`${API_BASE_URL}/audits/${inProgressAudit.id}/progress`);
+                    currentEventSource = eventSource;
+
+                    eventSource.onmessage = (event) => {
+                        const progressData = JSON.parse(event.data);
+                        console.log('Progress event:', progressData);
+
+                        switch (progressData.type) {
+                            case 'connected':
+                                updateProgress('Reconnected to audit stream...', 0);
+                                break;
+                            case 'crawling':
+                                updateProgress(
+                                    progressData.message,
+                                    progressData.percentage || 0,
+                                    progressData.crawledCount || 0,
+                                    progressData.queuedCount || 0,
+                                    progressData.currentUrl
+                                );
+                                break;
+                            case 'completed':
+                                eventSource.close();
+                                currentEventSource = null;
+                                currentAuditId = null;
+                                loadAuditHistory(websiteId);
+                                break;
+                        }
+                    };
+
+                    eventSource.onerror = () => {
+                        // SSE connection failed - audit probably not actually running
+                        eventSource.close();
+                        currentEventSource = null;
+                        document.getElementById('progressText').textContent =
+                            'Audit may have been interrupted. Click "Cancel Audit" to clear this status.';
+                    };
+                } catch (error) {
+                    console.error('Failed to connect to SSE:', error);
+                }
             } else {
                 // Enable button
                 runAuditBtn.disabled = false;
