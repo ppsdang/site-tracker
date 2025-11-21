@@ -493,6 +493,21 @@ export class DatabaseManager {
     return stmt.all(auditId);
   }
 
+  // Delete operations
+  deleteWebsite(id: number): boolean {
+    // CASCADE DELETE will automatically delete all associated audits, issues, pages, and links
+    const stmt = this.db.prepare('DELETE FROM websites WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  deleteAudit(id: number): boolean {
+    // CASCADE DELETE will automatically delete all associated issues, pages, and links
+    const stmt = this.db.prepare('DELETE FROM audits WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
   close(): void {
     this.db.close();
   }

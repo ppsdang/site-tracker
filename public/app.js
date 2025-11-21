@@ -81,10 +81,15 @@ function displayWebsites(websites) {
 
     container.innerHTML = websites.map(website => `
         <div class="website-card" onclick="selectWebsite(${website.id}, '${escapeHtml(website.url)}')">
-            <div class="website-card-url">${escapeHtml(website.url)}</div>
-            <div class="website-card-meta">
-                ${website.last_audited_at ? `Last audit: ${formatDate(website.last_audited_at)}` : 'Not audited yet'}
+            <div class="website-card-content">
+                <div class="website-card-url">${escapeHtml(website.url)}</div>
+                <div class="website-card-meta">
+                    ${website.last_audited_at ? `Last audit: ${formatDate(website.last_audited_at)}` : 'Not audited yet'}
+                </div>
             </div>
+            <button class="delete-btn" onclick="event.stopPropagation(); deleteWebsite(${website.id}, '${escapeHtml(website.url)}')" title="Delete website and all audits">
+                🗑️
+            </button>
         </div>
     `).join('');
 }
@@ -209,6 +214,9 @@ function displayAuditHistory(audits) {
             <div class="audit-history-status">
                 <span class="status-badge status-${audit.status}">${audit.status}</span>
             </div>
+            <button class="delete-btn delete-btn-small" onclick="event.stopPropagation(); deleteAudit(${audit.id})" title="Delete this audit">
+                🗑️
+            </button>
         </div>
     `).join('');
 }
@@ -871,6 +879,76 @@ function displayFilteredPages(pages) {
             </table>
         </div>
     `;
+}
+
+async function deleteWebsite(websiteId, websiteUrl) {
+    const confirmed = confirm(`Are you sure you want to delete "${websiteUrl}" and all its audit history?\n\nThis action cannot be undone.`);
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/websites/${websiteId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('Website and all associated audits deleted successfully');
+
+            // Clear selected website if it was deleted
+            if (selectedWebsite && selectedWebsite.id === websiteId) {
+                selectedWebsite = null;
+                document.getElementById('websiteDetails').style.display = 'none';
+            }
+
+            // Reload website list
+            loadWebsites();
+        } else {
+            alert('Failed to delete website: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error deleting website:', error);
+        alert('Error deleting website. Please try again.');
+    }
+}
+
+async function deleteAudit(auditId) {
+    const confirmed = confirm('Are you sure you want to delete this audit?\n\nThis action cannot be undone.');
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/audits/${auditId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('Audit deleted successfully');
+
+            // Reload audit history for current website
+            if (selectedWebsite) {
+                await loadAuditHistory(selectedWebsite.id);
+            }
+
+            // Clear audit results if this audit was being displayed
+            if (currentAudit && currentAudit.id === auditId) {
+                document.getElementById('auditResults').style.display = 'none';
+                currentAudit = null;
+            }
+        } else {
+            alert('Failed to delete audit: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error deleting audit:', error);
+        alert('Error deleting audit. Please try again.');
+    }
 }
 
 function getScoreClass(score) {

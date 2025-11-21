@@ -667,6 +667,10 @@ input[type="url"]:focus {
     cursor: pointer;
     transition: all 0.3s;
     border: 2px solid transparent;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
 }
 
 .website-card:hover {
@@ -674,6 +678,10 @@ input[type="url"]:focus {
     transform: translateY(-3px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     border-color: #667eea;
+}
+
+.website-card-content {
+    flex: 1;
 }
 
 .website-card-url {
@@ -686,6 +694,34 @@ input[type="url"]:focus {
 .website-card-meta {
     font-size: 0.9rem;
     color: #666;
+}
+
+.delete-btn {
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-btn:hover {
+    background: #cc0000;
+    transform: scale(1.1);
+}
+
+.delete-btn-small {
+    padding: 6px 10px;
+    font-size: 1rem;
+    min-width: 36px;
+    min-height: 36px;
 }
 
 .add-website-form {

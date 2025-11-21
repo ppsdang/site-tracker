@@ -313,5 +313,33 @@ export function createAuditRoutes(
     // Keep connection alive - no return needed for SSE endpoints
   });
 
+  // Delete an audit
+  router.delete('/audits/:id', (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid audit ID' });
+      }
+
+      const deleted = auditService.deleteAudit(id);
+
+      if (!deleted) {
+        return res.status(404).json({ error: 'Audit not found' });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Audit deleted successfully',
+      });
+    } catch (error: any) {
+      console.error('Error deleting audit:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to delete audit',
+      });
+    }
+  });
+
   return router;
 }

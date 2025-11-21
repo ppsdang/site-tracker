@@ -405,4 +405,12 @@ export class AuditService {
   updateAuditStatus(auditId: number, status: 'completed' | 'in_progress' | 'failed' | 'cancelled'): void {
     this.db.updateAuditStatus(auditId, status);
   }
+
+  deleteWebsite(id: number): boolean {
+    return this.db.deleteWebsite(id);
+  }
+
+  deleteAudit(id: number): boolean {
+    return this.db.deleteAudit(id);
+  }
 }
