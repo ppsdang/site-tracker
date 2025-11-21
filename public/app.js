@@ -562,13 +562,18 @@ async function loadComparison(auditId) {
 
         if (result.success && result.data.previous) {
             displayComparison(result.data);
+            // Update issues display with comparison data
+            displayIssuesGrouped(result.data.current.issues, result.data.previous.issues);
         } else {
             // Hide comparison section if no previous audit
             document.getElementById('comparisonSection').style.display = 'none';
+            // Display issues without comparison
+            displayIssuesGrouped(currentAudit.issues, null);
         }
     } catch (error) {
         console.error('Error loading comparison:', error);
         document.getElementById('comparisonSection').style.display = 'none';
+        displayIssuesGrouped(currentAudit ? currentAudit.issues : [], null);
     }
 }
 
@@ -640,33 +645,148 @@ function updateMetric(name, score) {
 }
 
 function displayIssues(issues) {
+    // Fallback to old display method - redirect to grouped display
+    displayIssuesGrouped(issues, null);
+}
+
+function displayIssuesGrouped(currentIssues, previousIssues) {
     const issuesList = document.getElementById('issuesList');
     const issueCount = document.getElementById('issueCount');
 
-    // Filter issues
-    const filteredIssues = currentFilter === 'all'
-        ? issues
-        : issues.filter(issue => issue.severity === currentFilter);
+    if (!currentIssues || currentIssues.length === 0) {
+        issueCount.textContent = '0';
+        issuesList.innerHTML = '<p class="empty-state">No issues found</p>';
+        return;
+    }
 
-    issueCount.textContent = filteredIssues.length;
+    // Group current issues by category
+    const currentGrouped = groupIssuesByCategory(currentIssues);
 
-    if (filteredIssues.length === 0) {
+    // Group previous issues by category (if available)
+    const previousGrouped = previousIssues ? groupIssuesByCategory(previousIssues) : {};
+
+    // Filter by severity if needed
+    let filteredCategories = Object.keys(currentGrouped);
+    if (currentFilter !== 'all') {
+        filteredCategories = filteredCategories.filter(category => {
+            return currentGrouped[category].some(issue => issue.severity === currentFilter);
+        });
+    }
+
+    // Count total filtered issues
+    let totalIssues = 0;
+    filteredCategories.forEach(category => {
+        const categoryIssues = currentFilter === 'all'
+            ? currentGrouped[category]
+            : currentGrouped[category].filter(issue => issue.severity === currentFilter);
+        totalIssues += categoryIssues.length;
+    });
+
+    issueCount.textContent = totalIssues;
+
+    if (filteredCategories.length === 0) {
         issuesList.innerHTML = '<p class="empty-state">No issues found in this category</p>';
         return;
     }
 
-    issuesList.innerHTML = filteredIssues.map(issue => `
-        <div class="issue-item ${issue.severity}">
-            <div class="issue-header">
-                <span class="issue-title">${escapeHtml(issue.title)}</span>
-                <span class="issue-severity ${issue.severity}">${issue.severity}</span>
+    // Build grouped HTML
+    issuesList.innerHTML = filteredCategories.map(category => {
+        const categoryIssues = currentFilter === 'all'
+            ? currentGrouped[category]
+            : currentGrouped[category].filter(issue => issue.severity === currentFilter);
+
+        const currentCount = categoryIssues.length;
+        const previousCount = previousGrouped[category] ? previousGrouped[category].length : null;
+
+        // Determine if improved or deteriorated
+        let changeIndicator = '';
+        let changeClass = '';
+        if (previousCount !== null) {
+            const diff = currentCount - previousCount;
+            if (diff < 0) {
+                // Improved (fewer issues)
+                changeIndicator = `<span class="issue-change improved">↓ ${Math.abs(diff)} improved</span>`;
+                changeClass = 'improved';
+            } else if (diff > 0) {
+                // Deteriorated (more issues)
+                changeIndicator = `<span class="issue-change deteriorated">↑ ${diff} new</span>`;
+                changeClass = 'deteriorated';
+            } else {
+                changeIndicator = `<span class="issue-change unchanged">→ unchanged</span>`;
+                changeClass = 'unchanged';
+            }
+        }
+
+        // Get severity breakdown
+        const severityCounts = {
+            critical: categoryIssues.filter(i => i.severity === 'critical').length,
+            high: categoryIssues.filter(i => i.severity === 'high').length,
+            medium: categoryIssues.filter(i => i.severity === 'medium').length,
+            low: categoryIssues.filter(i => i.severity === 'low').length,
+        };
+
+        const severityBadges = Object.entries(severityCounts)
+            .filter(([_, count]) => count > 0)
+            .map(([severity, count]) => `<span class="severity-badge ${severity}">${count} ${severity}</span>`)
+            .join('');
+
+        const categoryId = category.replace(/\s+/g, '-').toLowerCase();
+
+        return `
+            <div class="issue-group ${changeClass}">
+                <div class="issue-group-header" onclick="toggleIssueGroup('${categoryId}')">
+                    <div class="issue-group-title">
+                        <span class="issue-group-icon">📋</span>
+                        <span class="issue-group-name">${escapeHtml(category)}</span>
+                        <span class="issue-group-count">${currentCount} issue${currentCount !== 1 ? 's' : ''}</span>
+                        ${changeIndicator}
+                    </div>
+                    <div class="issue-group-severity">
+                        ${severityBadges}
+                        <span class="issue-group-toggle" id="toggle-${categoryId}">▼</span>
+                    </div>
+                </div>
+                <div class="issue-group-content" id="content-${categoryId}" style="display: none;">
+                    ${categoryIssues.map(issue => `
+                        <div class="issue-item ${issue.severity}">
+                            <div class="issue-header">
+                                <span class="issue-title">${escapeHtml(issue.title)}</span>
+                                <span class="issue-severity ${issue.severity}">${issue.severity}</span>
+                            </div>
+                            <div class="issue-description">${escapeHtml(issue.description)}</div>
+                            ${issue.element ? `<div class="issue-element">Element: ${escapeHtml(issue.element)}</div>` : ''}
+                            <div class="issue-recommendation">💡 ${escapeHtml(issue.recommendation)}</div>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
-            <div class="issue-category">${escapeHtml(issue.category)}</div>
-            <div class="issue-description">${escapeHtml(issue.description)}</div>
-            ${issue.element ? `<div class="issue-element">Element: ${escapeHtml(issue.element)}</div>` : ''}
-            <div class="issue-recommendation">💡 ${escapeHtml(issue.recommendation)}</div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+function groupIssuesByCategory(issues) {
+    const grouped = {};
+    issues.forEach(issue => {
+        const category = issue.category || 'Other';
+        if (!grouped[category]) {
+            grouped[category] = [];
+        }
+        grouped[category].push(issue);
+    });
+    return grouped;
+}
+
+function toggleIssueGroup(groupId) {
+    const content = document.getElementById(`content-${groupId}`);
+    const toggle = document.getElementById(`toggle-${groupId}`);
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        content.style.display = 'none';
+        toggle.textContent = '▼';
+    }
 }
 
 function showAllPagesModal() {
