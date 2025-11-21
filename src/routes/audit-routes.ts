@@ -37,10 +37,15 @@ export function createAuditRoutes(
           setTimeout(async () => {
             // Check if we have a recently created audit for this URL (any status)
             const website = auditService.getWebsiteByUrl(url);
+            console.log(`[DEBUG] Looking for in_progress audit for website ID: ${website?.id}`);
             if (website) {
               const latestAudit = auditService.getLatestAuditForWebsiteAnyStatus(website.id!);
+              console.log(`[DEBUG] Found audit:`, latestAudit ? `ID=${latestAudit.id}, status=${latestAudit.status}` : 'null');
               if (latestAudit && latestAudit.status === 'in_progress') {
+                console.log(`[DEBUG] Returning audit ID ${latestAudit.id} to frontend`);
                 resolve(latestAudit);
+              } else {
+                console.log(`[DEBUG] No in_progress audit found, waiting for completion...`);
               }
             }
           }, 500);
@@ -51,6 +56,8 @@ export function createAuditRoutes(
       auditPromise.catch(error => {
         console.error('Background audit error:', error);
       });
+
+      console.log(`[DEBUG] POST /api/audits returning:`, audit ? `ID=${audit.id}, status=${audit.status}` : 'null');
 
       return res.status(201).json({
         success: true,
@@ -256,14 +263,17 @@ export function createAuditRoutes(
     res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering in nginx
 
     // Send initial connection message
+    console.log(`[DEBUG SSE] Client connected to audit ${id} progress stream`);
     res.write('data: {"type":"connected","message":"Connected to progress stream"}\n\n');
 
     // Get or create progress tracker for this audit
     const tracker = ProgressTracker.getTracker(id);
+    console.log(`[DEBUG SSE] ProgressTracker obtained for audit ${id}`);
 
     // Listen for progress events
     const progressHandler = (event: any) => {
       try {
+        console.log(`[DEBUG SSE] Sending event to client:`, event.type, event.crawledCount);
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       } catch (error) {
         console.error('Error writing SSE data:', error);
@@ -271,6 +281,7 @@ export function createAuditRoutes(
     };
 
     tracker.on('progress', progressHandler);
+    console.log(`[DEBUG SSE] Listening for progress events on audit ${id}`);
 
     // Handle client disconnect
     req.on('close', () => {
