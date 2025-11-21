@@ -35,10 +35,10 @@ export function createAuditRoutes(
         new Promise<any>((resolve) => {
           // Give it a second to create the audit record and start
           setTimeout(async () => {
-            // Check if we have a recently created audit for this URL
+            // Check if we have a recently created audit for this URL (any status)
             const website = auditService.getWebsiteByUrl(url);
             if (website) {
-              const latestAudit = auditService.getLatestAuditForWebsite(website.id!);
+              const latestAudit = auditService.getLatestAuditForWebsiteAnyStatus(website.id!);
               if (latestAudit && latestAudit.status === 'in_progress') {
                 resolve(latestAudit);
               }

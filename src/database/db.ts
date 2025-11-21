@@ -289,6 +289,18 @@ export class DatabaseManager {
     return this.mapRowToAudit(row);
   }
 
+  getLatestAuditForWebsiteAnyStatus(websiteId: number): Audit | undefined {
+    const stmt = this.db.prepare(`
+      SELECT * FROM audits
+      WHERE website_id = ?
+      ORDER BY audit_date DESC
+      LIMIT 1
+    `);
+    const row = stmt.get(websiteId) as any;
+    if (!row) return undefined;
+    return this.mapRowToAudit(row);
+  }
+
   getAuditsForWebsite(websiteId: number, limit: number = 10): Audit[] {
     const stmt = this.db.prepare(`
       SELECT * FROM audits

@@ -371,6 +371,10 @@ export class AuditService {
     return this.db.getLatestAuditForWebsite(websiteId);
   }
 
+  getLatestAuditForWebsiteAnyStatus(websiteId: number): Audit | undefined {
+    return this.db.getLatestAuditForWebsiteAnyStatus(websiteId);
+  }
+
   getAuditsForWebsite(websiteId: number, limit: number = 10): Audit[] {
     return this.db.getAuditsForWebsite(websiteId, limit);
   }
